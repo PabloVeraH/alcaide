@@ -1,0 +1,6 @@
+version: 1
+defaults:
+  mode: enforcement
+  block_threshold: extreme
+
+rules: []

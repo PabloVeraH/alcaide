@@ -3,9 +3,7 @@ resolver = "2"
 members = [
     "alcaide-core",
     "alcaide-cli",
-    # "alcaide-py" is added in milestone M8 — pyo3 0.22 (latest stable as of
-    # writing) doesn't support Python 3.14 yet, installed in this environment.
-    # Not worth resolving that incompatibility for a crate with no real logic yet.
+    "alcaide-py",
 ]
 
 [workspace.package]
@@ -28,3 +26,4 @@ base64 = "0.22"
 sha2 = "0.10"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 serde_json = "1"
+pyo3 = "0.29"
