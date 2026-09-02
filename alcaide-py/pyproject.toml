@@ -6,12 +6,19 @@ build-backend = "maturin"
 name = "alcaide"
 version = "0.1.0"
 description = "A deterministic, auditable prompt-injection firewall"
+readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "AGPL-3.0-only" }
+authors = [{ name = "Pablo Vera", email = "pablo.vera82@gmail.com" }]
 classifiers = [
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
 ]
+
+[project.urls]
+Repository = "https://github.com/PabloVeraH/alcaide"
+Issues = "https://github.com/PabloVeraH/alcaide/issues"
+Benchmarks = "https://github.com/PabloVeraH/alcaide/blob/main/BENCHMARKS.md"
 
 [tool.maturin]
 module-name = "alcaide"
