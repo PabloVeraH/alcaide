@@ -4,6 +4,7 @@
 
 mod config;
 mod decision;
+mod normalize;
 
 pub use config::{Category, Defaults, OnError, PatternType, Rule, RuleSet, Severity};
 pub use decision::{Decision, MatchDetail, Mode, Verdict};
@@ -36,7 +37,10 @@ pub enum ConfigError {
         "rule '{id}': pattern_type is '{pattern_type:?}' but no pattern was provided \
          (required unless pattern_type is heuristic)"
     )]
-    MissingPattern { id: String, pattern_type: PatternType },
+    MissingPattern {
+        id: String,
+        pattern_type: PatternType,
+    },
 }
 
 impl Detector {
