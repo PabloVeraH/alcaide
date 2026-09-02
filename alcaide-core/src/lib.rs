@@ -4,10 +4,16 @@
 
 mod config;
 mod decision;
+mod matcher;
 mod normalize;
 
 pub use config::{Category, Defaults, OnError, PatternType, Rule, RuleSet, Severity};
 pub use decision::{Decision, MatchDetail, Mode, Verdict};
+// Exposed for the benches/ crate (a separate compilation unit) and for
+// M4's wiring into Detector::evaluate. Not yet part of the documented,
+// stable public contract (TRD §4) -- may change without notice before 1.0.
+pub use matcher::{Match, Matcher, MatcherError};
+pub use normalize::NormalizedInput;
 
 use std::path::{Path, PathBuf};
 
