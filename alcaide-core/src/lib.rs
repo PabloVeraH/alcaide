@@ -123,6 +123,12 @@ impl Detector {
         })
     }
 
+    /// Total number of rules in the loaded rule set (enabled and
+    /// disabled alike) -- e.g. for a CLI to report "N rules loaded".
+    pub fn rule_count(&self) -> usize {
+        self.rules.rules.len()
+    }
+
     /// Evaluates an input against the loaded rules and returns an
     /// explainable `Decision`. Never panics on arbitrary input, and never
     /// makes a network call (RNF2) -- see the pipeline stages below.
@@ -304,6 +310,20 @@ mod tests {
             matcher,
             mode,
         }
+    }
+
+    #[test]
+    fn rule_count_reflects_the_loaded_rule_set() {
+        let detector = detector_with(
+            Mode::Enforcement,
+            Severity::High,
+            vec![
+                literal_rule("rule-a", "alpha", Severity::High),
+                literal_rule("rule-b", "beta", Severity::High),
+            ],
+        );
+
+        assert_eq!(detector.rule_count(), 2);
     }
 
     // --- The four required mode x threshold combinations (M4 DoD) ---
