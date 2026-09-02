@@ -1,13 +1,13 @@
-//! Binario `alcaide` — comandos `check`, `lint-rules`, `bench`, `contribute`.
+//! `alcaide` binary — `check`, `lint-rules`, `bench`, `contribute` commands.
 //!
-//! Placeholder de estructura (hito M0). El parseo de argumentos y los
-//! comandos reales se implementan en el hito M9 — ver
-//! `docs/ui-ux-brief.md` sección 3 y `docs/plan-implementacion.md`.
+//! Structural placeholder (milestone M0). Argument parsing and the real
+//! commands are implemented in milestone M9 — see `docs/ui-ux-brief.md`
+//! section 3 and `docs/plan-implementacion.md`.
 
 fn main() {
-    // Prueba de enlace: confirma que alcaide-cli puede consumir los tipos
-    // públicos de alcaide-core (docs/TRD.md sección 1: arquitectura de workspace).
+    // Link test: confirms alcaide-cli can consume alcaide-core's public
+    // types (docs/TRD.md section 1: workspace architecture).
     let mode = alcaide_core::Mode::Shadow;
-    println!("alcaide-cli: esqueleto de M0 — modo por defecto: {mode:?}");
-    println!("Comandos reales (check/lint-rules/bench/contribute) pendientes del hito M9.");
+    println!("alcaide-cli: M0 scaffold — default mode: {mode:?}");
+    println!("Real commands (check/lint-rules/bench/contribute) pending milestone M9.");
 }

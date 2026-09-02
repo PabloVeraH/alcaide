@@ -1,7 +1,7 @@
-//! Esquema de decisión y del registro de log JSON.
+//! Decision schema and JSON log record.
 //!
-//! Espejo tipado de `docs/esquema-datos.md` sección 2 y del flujo de
-//! decisión en tiempo de ejecución descrito en `docs/flujo-app.md` (flujo A).
+//! Typed mirror of `docs/esquema-datos.md` section 2 and the runtime
+//! decision flow described in `docs/flujo-app.md` (flow A).
 
 use crate::config::{Category, Severity};
 use serde::{Deserialize, Serialize};
@@ -22,7 +22,7 @@ pub enum Verdict {
     Flag,
 }
 
-/// Resultado devuelto por `Detector::evaluate` — ver `docs/TRD.md` sección 4.
+/// Result returned by `Detector::evaluate` — see `docs/TRD.md` section 4.
 #[derive(Debug, Clone)]
 pub struct Decision {
     pub verdict: Verdict,
@@ -31,13 +31,13 @@ pub struct Decision {
     pub mode: Mode,
 }
 
-/// Una coincidencia individual dentro de una `Decision` — corresponde al
-/// objeto `MatchDetail` de `docs/esquema-datos.md` sección 2.
+/// A single match within a `Decision` — corresponds to the `MatchDetail`
+/// object in `docs/esquema-datos.md` section 2.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MatchDetail {
     pub rule_id: String,
     pub category: Category,
     pub severity: Severity,
-    /// Offsets `(start, end)` en el texto normalizado, no en el input crudo.
+    /// `(start, end)` offsets in the normalized text, not the raw input.
     pub span: (usize, usize),
 }

@@ -1,11 +1,11 @@
-//! Esquema del archivo de configuración de reglas (`rules.yaml`).
+//! Schema of the rule configuration file (`rules.yaml`).
 //!
-//! Espejo tipado de `docs/esquema-datos.md` sección 1 — cualquier cambio de
-//! campo debe reflejarse en ambos lugares.
+//! Typed mirror of `docs/esquema-datos.md` section 1 — any field change
+//! must be reflected in both places.
 
 use serde::{Deserialize, Serialize};
 
-/// Raíz del archivo `rules.yaml`. Ver `docs/esquema-datos.md` sección 1.
+/// Root of the `rules.yaml` file. See `docs/esquema-datos.md` section 1.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RuleSet {
     pub version: u32,
@@ -21,8 +21,8 @@ pub struct Defaults {
     pub on_error: OnError,
 }
 
-/// Comportamiento ante fallo interno de evaluación — ver `docs/TRD.md` sección 5
-/// (decisión de diseño: fail-closed por defecto).
+/// Behavior on internal evaluation failure — see `docs/TRD.md` section 5
+/// (design decision: fail-closed by default).
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum OnError {
@@ -31,16 +31,16 @@ pub enum OnError {
     Allow,
 }
 
-/// Una regla individual del catálogo. Ver `docs/esquema-datos.md` sección 1
-/// y `docs/ui-ux-brief.md` sección 2 para el formato editado por humanos.
+/// A single rule in the catalog. See `docs/esquema-datos.md` section 1 and
+/// `docs/ui-ux-brief.md` section 2 for the human-edited file format.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Rule {
     pub id: String,
     pub category: Category,
     pub severity: Severity,
     pub pattern_type: PatternType,
-    /// Obligatorio si `pattern_type` != `Heuristic` — no se valida aquí todavía
-    /// (validación semántica post-parsing es trabajo del hito M1).
+    /// Required if `pattern_type` != `Heuristic` — not validated here yet
+    /// (semantic validation is milestone M1's job).
     #[serde(default)]
     pub pattern: Option<String>,
     #[serde(default = "default_enabled")]
@@ -63,7 +63,7 @@ pub enum Category {
     InjectionGeneric,
 }
 
-/// El orden de declaración importa: deriva `Ord` para poder comparar contra
+/// Declaration order matters: derives `Ord` to compare against
 /// `Defaults::block_threshold` (Low < Medium < High < Critical).
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "lowercase")]
@@ -86,8 +86,10 @@ pub enum PatternType {
 mod tests {
     use super::*;
 
-    /// Fixture tomado literalmente de `docs/ui-ux-brief.md` sección 2 — si este
-    /// test falla, la documentación y el esquema real se desincronizaron.
+    /// Fixture taken verbatim from `docs/ui-ux-brief.md` section 2 — if this
+    /// test fails, the documentation and the real schema have drifted apart.
+    /// Kept in Spanish on purpose: it demonstrates detection of a
+    /// Spanish-language jailbreak pattern, matching the documented example.
     const EXAMPLE_YAML: &str = r#"
 version: 1
 defaults:
@@ -113,12 +115,12 @@ rules:
 
     #[test]
     fn parses_the_documented_example_verbatim() {
-        let parsed: RuleSet = serde_yaml::from_str(EXAMPLE_YAML).expect("YAML válido");
+        let parsed: RuleSet = serde_yaml::from_str(EXAMPLE_YAML).expect("valid YAML");
 
         assert_eq!(parsed.version, 1);
         assert_eq!(parsed.defaults.mode, crate::decision::Mode::Shadow);
         assert_eq!(parsed.defaults.block_threshold, Severity::High);
-        assert_eq!(parsed.defaults.on_error, OnError::Block); // default aplicado
+        assert_eq!(parsed.defaults.on_error, OnError::Block); // default applied
         assert_eq!(parsed.rules.len(), 2);
 
         let jailbreak_rule = &parsed.rules[0];
