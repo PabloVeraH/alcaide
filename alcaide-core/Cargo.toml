@@ -27,3 +27,7 @@ criterion = "0.5"
 name = "matching_benchmark"
 harness = false
 
+[[bench]]
+name = "real_rules_benchmark"
+harness = false
+
