@@ -4,7 +4,7 @@ A deterministic, auditable prompt-injection firewall written in Rust — inspect
 
 ## Status
 
-Early development. The rule engine (`alcaide-core`) is functional and tested: config loading, normalization (Unicode NFKC, homoglyph folding, base64/hex decoding), pattern matching (literal + regex + heuristic rules), scoring, shadow/enforcement modes, and structured JSON logging all work end to end. Not yet on crates.io. No CLI or Python bindings yet.
+Pre-1.0, but functionally complete for the core use case: config loading, normalization (Unicode NFKC, homoglyph folding, base64/hex decoding), pattern matching (literal + regex + heuristic rules), scoring, shadow/enforcement modes, structured JSON logging, a curated default rule set with cited sources, a CLI (`alcaide check` / `lint-rules` / `bench`), and Python bindings (`pip install .` in `alcaide-py/`) all work end to end. Not yet published to crates.io or PyPI. See [`BENCHMARKS.md`](BENCHMARKS.md) for real, measured detection/false-positive rates and latency against the curated rule set.
 
 ## Usage
 
@@ -54,6 +54,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```
 
 `decision.matched_rules` carries the exact rule id, category, severity, and text span that triggered — every decision is explainable, never just a score.
+
+A curated, cited-source default rule set ships at [`alcaide-core/rules/default.yaml`](alcaide-core/rules/default.yaml) — a starting point, not a claim of completeness (see [`BENCHMARKS.md`](BENCHMARKS.md) for its measured detection/false-positive rates).
 
 ### Privacy
 
