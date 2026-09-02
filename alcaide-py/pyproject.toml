@@ -1,0 +1,21 @@
+[build-system]
+requires = ["maturin>=1.7,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "alcaide"
+version = "0.1.0"
+description = "A deterministic, auditable prompt-injection firewall"
+requires-python = ">=3.9"
+license = { text = "AGPL-3.0-only" }
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+]
+
+[tool.maturin]
+module-name = "alcaide"
+features = ["pyo3/extension-module"]
+
+[dependency-groups]
+test = ["pytest>=8"]

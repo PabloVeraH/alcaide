@@ -1,0 +1,15 @@
+[package]
+name = "alcaide-py"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Python bindings for Alcaide, via PyO3"
+
+[lib]
+name = "alcaide"
+crate-type = ["cdylib"]
+
+[dependencies]
+alcaide-core = { workspace = true }
+pyo3 = { workspace = true, features = ["extension-module"] }
