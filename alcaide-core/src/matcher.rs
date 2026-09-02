@@ -4,6 +4,12 @@
 //!
 //! Produces raw `Match` hits; aggregation into a `Decision` (severity
 //! resolution, mode handling) happens in milestone M4.
+//!
+//! `#[doc(hidden)]` at the re-export site (`lib.rs`) means this isn't
+//! part of the stable public contract -- exempt from `missing_docs`
+//! rather than writing polished docs for an API surface we've explicitly
+//! said may change without notice.
+#![allow(missing_docs)]
 
 use crate::config::{PatternType, Rule, RuleSet};
 use crate::normalize::{DecodeStep, NormalizedInput};
