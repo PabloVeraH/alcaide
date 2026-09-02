@@ -22,7 +22,16 @@ pub enum Verdict {
 /// Result returned by `Detector::evaluate`.
 #[derive(Debug, Clone)]
 pub struct Decision {
+    /// The verdict actually enforced for the caller. In `Shadow` mode this
+    /// is always `Allow`, regardless of what the rules found -- see
+    /// `evaluated_verdict`.
     pub verdict: Verdict,
+    /// What the rules determined, before any mode adjustment. Equals
+    /// `verdict` in `Enforcement` mode; in `Shadow` mode this carries what
+    /// enforcement *would have* done, while `verdict` itself stays `Allow`.
+    /// This is the field a structured logger (milestone M5) should record
+    /// to calibrate before switching to enforcement.
+    pub evaluated_verdict: Verdict,
     pub matched_rules: Vec<MatchDetail>,
     pub latency: Duration,
     pub mode: Mode,
