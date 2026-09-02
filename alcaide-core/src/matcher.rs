@@ -48,6 +48,7 @@ pub enum MatcherError {
 /// both the base64 and hex decode heuristics from M2 -- from a rule
 /// author's perspective both mean the same thing: normalization found and
 /// decoded a suspicious encoded blob.
+#[derive(Debug)]
 enum Heuristic {
     Base64Suspicious,
 }
@@ -76,6 +77,7 @@ impl Heuristic {
     }
 }
 
+#[derive(Debug)]
 struct HeuristicRule {
     rule_id: String,
     heuristic: Heuristic,
@@ -83,6 +85,7 @@ struct HeuristicRule {
 
 /// Compiled matching engine for one `RuleSet`. Built once per config load
 /// and reused across every `evaluate()` call (wired in milestone M4).
+#[derive(Debug)]
 pub struct Matcher {
     literal_automaton: Option<AhoCorasick>,
     literal_rule_ids: Vec<String>,
