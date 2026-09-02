@@ -10,6 +10,39 @@ pub struct RuleSet {
     pub rules: Vec<Rule>,
 }
 
+impl RuleSet {
+    /// Parses and semantically validates a `RuleSet` from a YAML string.
+    /// Covers RF2 (the rule set is defined in an external, human-editable
+    /// file, updatable without recompiling the binary).
+    pub fn from_yaml_str(yaml: &str) -> Result<Self, crate::ConfigError> {
+        let parsed: RuleSet = serde_yaml::from_str(yaml)?;
+        parsed.validate()?;
+        Ok(parsed)
+    }
+
+    /// Semantic validation that can't be expressed through serde alone:
+    /// rule ids must be unique, and a `pattern` is required unless
+    /// `pattern_type` is `Heuristic`.
+    pub fn validate(&self) -> Result<(), crate::ConfigError> {
+        let mut seen_ids = std::collections::HashSet::with_capacity(self.rules.len());
+
+        for rule in &self.rules {
+            if !seen_ids.insert(rule.id.as_str()) {
+                return Err(crate::ConfigError::DuplicateRuleId(rule.id.clone()));
+            }
+
+            if rule.pattern_type != PatternType::Heuristic && rule.pattern.is_none() {
+                return Err(crate::ConfigError::MissingPattern {
+                    id: rule.id.clone(),
+                    pattern_type: rule.pattern_type,
+                });
+            }
+        }
+
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Defaults {
     pub mode: crate::decision::Mode,
@@ -109,7 +142,10 @@ rules:
 
     #[test]
     fn parses_the_documented_example_verbatim() {
-        let parsed: RuleSet = serde_yaml::from_str(EXAMPLE_YAML).expect("valid YAML");
+        // Goes through the full public entry point (parse + validate), not
+        // just serde_yaml::from_str, so this also guards against a valid
+        // documented example accidentally failing semantic validation.
+        let parsed = RuleSet::from_yaml_str(EXAMPLE_YAML).expect("valid config");
 
         assert_eq!(parsed.version, 1);
         assert_eq!(parsed.defaults.mode, crate::decision::Mode::Shadow);
@@ -133,5 +169,103 @@ rules:
         assert!(Severity::Low < Severity::Medium);
         assert!(Severity::Medium < Severity::High);
         assert!(Severity::High < Severity::Critical);
+    }
+
+    #[test]
+    fn rejects_malformed_yaml_syntax() {
+        let broken = "version: 1\ndefaults: [this is not a mapping";
+
+        let result = RuleSet::from_yaml_str(broken);
+
+        assert!(matches!(result, Err(crate::ConfigError::Parse(_))));
+    }
+
+    #[test]
+    fn rejects_unknown_severity_value() {
+        let invalid = r#"
+version: 1
+defaults:
+  mode: shadow
+  block_threshold: extreme
+rules: []
+"#;
+
+        let result = RuleSet::from_yaml_str(invalid);
+
+        // Invalid enum discriminants are caught by serde itself at parse
+        // time, before our own semantic validation ever runs.
+        assert!(matches!(result, Err(crate::ConfigError::Parse(_))));
+    }
+
+    #[test]
+    fn rejects_duplicate_rule_ids() {
+        let duplicated = r#"
+version: 1
+defaults:
+  mode: shadow
+  block_threshold: high
+rules:
+  - id: same-id
+    category: jailbreak
+    severity: high
+    pattern_type: literal
+    pattern: "foo"
+  - id: same-id
+    category: jailbreak
+    severity: low
+    pattern_type: literal
+    pattern: "bar"
+"#;
+
+        let result = RuleSet::from_yaml_str(duplicated);
+
+        match result {
+            Err(crate::ConfigError::DuplicateRuleId(id)) => assert_eq!(id, "same-id"),
+            other => panic!("expected DuplicateRuleId, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn rejects_non_heuristic_rule_missing_pattern() {
+        let missing_pattern = r#"
+version: 1
+defaults:
+  mode: shadow
+  block_threshold: high
+rules:
+  - id: incomplete-rule
+    category: jailbreak
+    severity: high
+    pattern_type: regex
+"#;
+
+        let result = RuleSet::from_yaml_str(missing_pattern);
+
+        match result {
+            Err(crate::ConfigError::MissingPattern { id, pattern_type }) => {
+                assert_eq!(id, "incomplete-rule");
+                assert_eq!(pattern_type, PatternType::Regex);
+            }
+            other => panic!("expected MissingPattern, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn allows_heuristic_rule_without_pattern() {
+        let heuristic_only = r#"
+version: 1
+defaults:
+  mode: shadow
+  block_threshold: high
+rules:
+  - id: heuristic-rule
+    category: encoding-evasion
+    severity: medium
+    pattern_type: heuristic
+"#;
+
+        let result = RuleSet::from_yaml_str(heuristic_only);
+
+        assert!(result.is_ok());
     }
 }
