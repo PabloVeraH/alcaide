@@ -49,6 +49,11 @@ pub struct Defaults {
     pub block_threshold: Severity,
     #[serde(default)]
     pub on_error: OnError,
+    /// Privacy opt-in (default `false`): whether the raw input text is
+    /// included in the structured log record's `input_snippet` field.
+    /// Never enabled implicitly -- see the milestone M5 privacy test.
+    #[serde(default)]
+    pub log_raw_input: bool,
 }
 
 /// Behavior on internal evaluation failure (design decision: fail-closed

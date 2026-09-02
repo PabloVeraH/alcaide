@@ -15,6 +15,9 @@ serde_yaml = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 base64 = { workspace = true }
+sha2 = { workspace = true }
+chrono = { workspace = true }
+serde_json = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3"
@@ -23,3 +26,4 @@ criterion = "0.5"
 [[bench]]
 name = "matching_benchmark"
 harness = false
+

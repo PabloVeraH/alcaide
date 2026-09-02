@@ -32,6 +32,7 @@ fn synthetic_rule_set(count: usize) -> RuleSet {
             mode: Mode::Shadow,
             block_threshold: Severity::High,
             on_error: OnError::Block,
+            log_raw_input: false,
         },
         rules,
     }
