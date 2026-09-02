@@ -1,0 +1,14 @@
+[package]
+name = "alcaide-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Alcaide CLI"
+
+[[bin]]
+name = "alcaide"
+path = "src/main.rs"
+
+[dependencies]
+alcaide-core = { workspace = true }

@@ -1,0 +1,16 @@
+[package]
+name = "alcaide-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Alcaide's deterministic rule engine — no network dependencies"
+
+[dependencies]
+aho-corasick = { workspace = true }
+regex = { workspace = true }
+unicode-normalization = { workspace = true }
+serde = { workspace = true }
+serde_yaml = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
