@@ -1,0 +1,27 @@
+[workspace]
+resolver = "2"
+members = [
+    "alcaide-core",
+    "alcaide-cli",
+    # "alcaide-py" se agrega en el hito M8 (docs/plan-implementacion.md) —
+    # pyo3 0.22 (la última estable a la fecha) aún no soporta Python 3.14,
+    # instalado en este entorno. No tiene sentido resolver esa incompatibilidad
+    # para un crate que hoy no tiene lógica real.
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-only"
+repository = "https://github.com/PabloVeraH/alcaide"
+description = "Filtro de inyección de prompts en Rust: motor de reglas deterministas para LLMs"
+
+[workspace.dependencies]
+alcaide-core = { path = "alcaide-core", version = "0.1.0" }
+aho-corasick = "1"
+regex = "1"
+unicode-normalization = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9"
+thiserror = "1"
+tracing = "0.1"

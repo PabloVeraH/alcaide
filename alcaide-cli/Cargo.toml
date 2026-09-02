@@ -1,0 +1,14 @@
+[package]
+name = "alcaide-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "CLI de Alcaide — ver docs/ui-ux-brief.md sección 3 para los comandos planeados"
+
+[[bin]]
+name = "alcaide"
+path = "src/main.rs"
+
+[dependencies]
+alcaide-core = { workspace = true }

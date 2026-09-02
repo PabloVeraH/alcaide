@@ -1,0 +1,16 @@
+[package]
+name = "alcaide-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Motor de reglas deterministas de Alcaide — sin dependencias de red (RNF2, ver docs/TRD.md)"
+
+[dependencies]
+aho-corasick = { workspace = true }
+regex = { workspace = true }
+unicode-normalization = { workspace = true }
+serde = { workspace = true }
+serde_yaml = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
