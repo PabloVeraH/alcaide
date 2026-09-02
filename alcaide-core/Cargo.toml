@@ -18,3 +18,8 @@ base64 = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3"
+criterion = "0.5"
+
+[[bench]]
+name = "matching_benchmark"
+harness = false
