@@ -1,11 +1,12 @@
 //! Input normalization pipeline: Unicode NFKC, homoglyph folding, and a
 //! base64/hex decode-and-append heuristic.
 //!
-//! Internal pipeline stage, not part of the crate's public API — the
-//! public contract is `Detector`/`Decision` (see `lib.rs`). Not wired into
-//! `Detector::evaluate` yet (that happens in milestones M3-M4); only
-//! exercised by this module's own tests until then.
-#![allow(dead_code)]
+//! Internal pipeline stage, wired into `Detector::evaluate` since
+//! milestone M4. `#[doc(hidden)]` at the re-export site (`lib.rs`) means
+//! `NormalizedInput` isn't part of the stable public contract -- exempt
+//! from `missing_docs` rather than writing polished docs for an API
+//! surface we've explicitly said may change without notice.
+#![allow(missing_docs)]
 
 use base64::Engine;
 use regex::Regex;
