@@ -10,19 +10,27 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "AGPL-3.0-only" }
 authors = [{ name = "Pablo Vera", email = "pablo.vera82@gmail.com" }]
+keywords = ["prompt-injection", "llm", "security", "jailbreak", "firewall"]
 classifiers = [
+    "License :: OSI Approved :: GNU Affero General Public License v3",
     "Programming Language :: Rust",
+    "Programming Language :: Python :: 3",
     "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Security",
+    "Typing :: Typed",
 ]
 
 [project.urls]
 Repository = "https://github.com/PabloVeraH/alcaide"
 Issues = "https://github.com/PabloVeraH/alcaide/issues"
 Benchmarks = "https://github.com/PabloVeraH/alcaide/blob/main/BENCHMARKS.md"
+Changelog = "https://github.com/PabloVeraH/alcaide/blob/main/CHANGELOG.md"
 
+# pyo3's `extension-module` and `abi3-py39` features are set in Cargo.toml.
+# abi3: one wheel per platform covers every CPython >= 3.9. `alcaide.pyi`
+# (type stubs) and a `py.typed` marker are bundled automatically.
 [tool.maturin]
 module-name = "alcaide"
-features = ["pyo3/extension-module"]
 
 [dependency-groups]
 test = ["pytest>=8"]

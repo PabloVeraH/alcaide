@@ -2,19 +2,14 @@
 (rules/default.yaml). Python equivalent of
 alcaide-core/examples/basic_usage.rs. Run with:
 
-    cargo run  # not applicable here; see below
     python examples/basic_usage.py
 """
 
-import os
-
 from alcaide import Detector, Verdict
-
-RULES_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "alcaide-core", "rules", "default.yaml")
 
 
 def main() -> None:
-    detector = Detector.from_config_path(RULES_PATH)
+    detector = Detector.with_default_rules()
 
     prompts = [
         "What's the weather like today?",
@@ -34,7 +29,8 @@ def main() -> None:
         print(line)
 
         for m in decision.matched_rules:
-            print(f"    matched: {m.rule_id} ({m.category}, {m.severity})")
+            start, end = m.span
+            print(f"    matched: {m.rule_id} ({m.category}, {m.severity}) on {prompt[start:end]!r}")
 
 
 if __name__ == "__main__":
