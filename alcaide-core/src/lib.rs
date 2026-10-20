@@ -37,7 +37,10 @@ mod logging;
 mod matcher;
 mod normalize;
 
-pub use config::{Category, Defaults, OnError, OnOversize, PatternType, Rule, RuleSet, Severity};
+pub use config::{
+    Category, Defaults, OnError, OnOversize, PatternType, Rule, RuleSet, Severity,
+    SUPPORTED_VERSION,
+};
 pub use decision::{Decision, MatchDetail, Mode, Verdict};
 // Exposed only so the benches/ crate (a separate compilation unit) can
 // reach them. Not part of the stable, documented public contract (see the
@@ -76,7 +79,7 @@ pub enum ConfigError {
     /// schema (see the error's `Display` for the exact field and
     /// line/column).
     #[error("invalid configuration: {0}")]
-    Parse(#[from] serde_yaml::Error),
+    Parse(#[from] serde_saphyr::Error),
     /// The file's `version` isn't one this release understands.
     #[error("unsupported rule set version {found}: this release supports version {supported}")]
     UnsupportedVersion {

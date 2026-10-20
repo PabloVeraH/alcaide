@@ -1,6 +1,6 @@
 """End-to-end usage example against the curated default rule set
-(rules/default.yaml, milestone M6). Python equivalent of
-alcaide-core/examples/basic_usage.rs (milestone M7). Run with:
+(rules/default.yaml). Python equivalent of
+alcaide-core/examples/basic_usage.rs. Run with:
 
     cargo run  # not applicable here; see below
     python examples/basic_usage.py
@@ -29,7 +29,7 @@ def main() -> None:
         if decision.verdict == Verdict.Allow and decision.evaluated_verdict != Verdict.Allow:
             # The shipped default.yaml defaults to shadow mode -- the
             # caller always gets Allow, but the real result is still
-            # shown here and would be in the structured log (see M5).
+            # shown here and would be in the structured log.
             line += " (shadow mode: caller receives Allow, this is the real result)"
         print(line)
 

@@ -1,5 +1,5 @@
 //! End-to-end usage example against the curated default rule set
-//! (`rules/default.yaml`, milestone M6). Run with:
+//! (`rules/default.yaml`). Run with:
 //!
 //! ```sh
 //! cargo run -p alcaide-core --example basic_usage
@@ -25,7 +25,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if decision.verdict == Verdict::Allow && decision.evaluated_verdict != Verdict::Allow {
             // The shipped default.yaml defaults to shadow mode -- the
             // caller always gets Allow, but the real result is still
-            // shown here and would be in the structured log (see M5).
+            // shown here and would be in the structured log.
             print!(" (shadow mode: caller receives Allow, this is the real result)");
         }
         println!();

@@ -2,9 +2,12 @@
 name = "alcaide-py"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Python bindings for Alcaide, via PyO3"
+# Distributed on PyPI as `alcaide` (see pyproject.toml), not on crates.io.
+publish = false
 
 [lib]
 name = "alcaide"

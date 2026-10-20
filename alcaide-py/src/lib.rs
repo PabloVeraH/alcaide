@@ -1,5 +1,5 @@
-//! Python bindings for Alcaide, mirroring the Rust API (`alcaide-core`,
-//! TRD §4): `Detector`, `Decision`, `Verdict`, `Mode`, `MatchDetail`.
+//! Python bindings for Alcaide, mirroring the Rust API (`alcaide-core`):
+//! `Detector`, `Decision`, `Verdict`, `Mode`, `MatchDetail`.
 //!
 //! Kept as a thin translation layer -- all real logic lives in
 //! `alcaide-core`; this crate only converts between Rust and Python types

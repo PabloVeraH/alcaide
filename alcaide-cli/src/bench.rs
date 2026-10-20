@@ -2,7 +2,7 @@
 //! report measured detection/false-positive rates and latency.
 //!
 //! Corpus schema matches `alcaide-core/tests/corpus/prompts.yaml`
-//! (milestone M6) -- this is deliberately a small, focused reimplementation
+//! -- this is deliberately a small, focused reimplementation
 //! rather than a shared library dependency, since `tests/` files aren't
 //! importable as a crate and the schema is only a few fields.
 
@@ -44,7 +44,7 @@ pub fn run(rules_path: &Path, corpus_path: &Path) -> u8 {
         }
     };
 
-    let corpus: Vec<CorpusEntry> = match serde_yaml::from_str(&corpus_yaml) {
+    let corpus: Vec<CorpusEntry> = match serde_saphyr::from_str(&corpus_yaml) {
         Ok(corpus) => corpus,
         Err(error) => {
             eprintln!("Error parsing {}: {error}", corpus_path.display());

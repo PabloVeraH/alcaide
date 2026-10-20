@@ -12,7 +12,7 @@
 
 version: 1
 defaults:
-  mode: shadow # ships defaulting to shadow -- see the DX brief's adoption flow
+  mode: shadow # observe first: calibrate on real traffic, then switch to enforcement
   block_threshold: high
   on_error: block
   log_raw_input: false
@@ -200,7 +200,7 @@ rules:
       JailbreakBench (JailbreakBench/jailbreakbench, NeurIPS 2024)
       behavior categories for corroborating examples.
 
-  # --- encoding-evasion: heuristic, driven by the M2 normalization stage ---
+  # --- encoding-evasion: heuristic, driven by the normalization stage ---
 
   - id: encoding-base64-suspicious
     category: encoding-evasion
@@ -209,17 +209,17 @@ rules:
     pattern: base64_suspicious
     enabled: true
     notes: >
-      Fires when normalization (M2) decodes a base64/hex blob to valid
-      UTF-8 text. Medium severity (not high/critical): encoding alone is
-      not evidence of intent, only of obfuscation -- see TRD's note that
-      encoding heuristics are a signal, not a verdict. Verified against
+      Fires when normalization decodes a base64/hex blob to readable
+      text. Medium severity (not high/critical): encoding alone is
+      not evidence of intent, only of obfuscation -- an encoding heuristic
+      is a signal, not a verdict. Verified against
       OWASP's own literal example: base64("Ignore all previous
       instructions") = "SWdub3JlIGFsbCBwcmV2aW91cyBpbnN0cnVjdGlvbnM=".
 
-# Known, acknowledged gap for this Phase 1 rule set (see TRD §7): character
+# Known, acknowledged gap for this rule set: character
 # scrambling / typoglycemia evasion (e.g. "ignroe all prevoius systme
 # instructions", documented in the same OWASP cheat sheet cited above) is
 # NOT caught by any rule here. Regex/literal matching cannot reasonably
 # catch arbitrary letter transpositions without a fuzzy-matching approach
-# out of scope for Phase 1's deterministic engine -- this is a Phase 2 (ML
-# classifier) candidate, not a gap to paper over with a fragile regex.
+# out of scope for a deterministic engine -- this is a candidate for a
+# learned classifier, not a gap to paper over with a fragile regex.

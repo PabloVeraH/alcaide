@@ -28,7 +28,7 @@ impl RuleSet {
     /// This checks the file itself; patterns are compiled (and checked
     /// further) when a [`Detector`](crate::Detector) is built from it.
     pub fn from_yaml_str(yaml: &str) -> Result<Self, crate::ConfigError> {
-        let parsed: RuleSet = serde_yaml::from_str(yaml)?;
+        let parsed: RuleSet = serde_saphyr::from_str(yaml)?;
         parsed.validate()?;
         Ok(parsed)
     }
@@ -86,7 +86,7 @@ pub struct Defaults {
     pub on_error: OnError,
     /// Privacy opt-in (default `false`): whether the raw input text is
     /// included in the structured log record's `input_snippet` field.
-    /// Never enabled implicitly -- see the milestone M5 privacy test.
+    /// Never enabled implicitly -- see the logging module's privacy tests.
     #[serde(default)]
     pub log_raw_input: bool,
     /// Inputs longer than this many bytes are only inspected up to this
@@ -263,7 +263,7 @@ rules:
     #[test]
     fn parses_the_documented_example_verbatim() {
         // Goes through the full public entry point (parse + validate), not
-        // just serde_yaml::from_str, so this also guards against a valid
+        // just serde_saphyr::from_str, so this also guards against a valid
         // documented example accidentally failing semantic validation.
         let parsed = RuleSet::from_yaml_str(EXAMPLE_YAML).expect("valid config");
 

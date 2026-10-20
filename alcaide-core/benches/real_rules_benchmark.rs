@@ -1,7 +1,7 @@
-//! Real-rules latency benchmark (milestone M10) -- confirms RNF1 (p99 <
-//! 5ms) against the actual curated default rule set (`rules/default.yaml`,
-//! 14 rules mixing literal/regex/heuristic patterns), not the 1000
-//! synthetic literal-only rules used for the preliminary M3 sanity check.
+//! Real-rules latency benchmark -- checks the p99 < 5ms latency target
+//! against the actual curated default rule set (`rules/default.yaml`,
+//! mixing literal/regex/heuristic patterns), not the synthetic
+//! literal-only rules of `matching_benchmark.rs`.
 //!
 //! Uses the full `Detector::evaluate` (size check, normalize, match,
 //! enrich, score, mode-adjust, log emission), not just the matcher in

@@ -61,6 +61,10 @@ A curated, cited-source default rule set ships at [`alcaide-core/rules/default.y
 
 Nothing is sent over the network. Every call to `evaluate` also emits one structured JSON log line via [`tracing`](https://docs.rs/tracing) (target `alcaide::decision`) containing a SHA-256 hash of the input, never the raw text, unless `log_raw_input: true` is explicitly set in `defaults`.
 
+## Contributing and security
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and how to propose rules, and [CHANGELOG.md](CHANGELOG.md) for what changed between versions. Found a bypass? Please report it privately, as described in [SECURITY.md](SECURITY.md).
+
 ## License
 
-This crate (`alcaide-core` and `alcaide-cli`) is distributed under [AGPL-3.0-only](LICENSE).
+Every crate in this repository (`alcaide-core`, `alcaide-cli`, and the `alcaide` Python bindings in `alcaide-py`) is distributed under [AGPL-3.0-only](LICENSE).
