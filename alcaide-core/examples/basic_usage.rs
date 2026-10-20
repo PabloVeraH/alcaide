@@ -6,11 +6,9 @@
 //! ```
 
 use alcaide_core::{Detector, Verdict};
-use std::path::Path;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rules_path = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/rules/default.yaml"));
-    let detector = Detector::from_config_path(rules_path)?;
+fn main() {
+    let detector = Detector::with_default_rules();
 
     let prompts = [
         "What's the weather like today?",
@@ -31,12 +29,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!();
 
         for m in &decision.matched_rules {
+            let (start, end) = m.span;
             println!(
-                "    matched: {} ({:?}, {:?})",
-                m.rule_id, m.category, m.severity
+                "    matched: {} ({:?}, {:?}) on {:?}",
+                m.rule_id,
+                m.category,
+                m.severity,
+                &prompt[start..end]
             );
         }
     }
-
-    Ok(())
 }
