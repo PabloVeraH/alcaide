@@ -65,6 +65,53 @@ pub struct Defaults {
     /// Never enabled implicitly -- see the milestone M5 privacy test.
     #[serde(default)]
     pub log_raw_input: bool,
+    /// Inputs longer than this many bytes are only inspected up to this
+    /// length (bounding worst-case evaluation cost), and `on_oversize`
+    /// decides the minimum verdict for them. Defaults to 32,000.
+    #[serde(default = "default_max_input_bytes")]
+    pub max_input_bytes: usize,
+    /// Minimum verdict for an input longer than `max_input_bytes`, whose
+    /// tail could not be inspected. Defaults to `Block` (fail-closed).
+    #[serde(default)]
+    pub on_oversize: OnOversize,
+}
+
+impl Default for Defaults {
+    /// The same values the shipped default rule set uses: shadow mode,
+    /// block at `high`, fail-closed everywhere, raw input never logged.
+    fn default() -> Self {
+        Self {
+            mode: crate::decision::Mode::Shadow,
+            block_threshold: Severity::High,
+            on_error: OnError::default(),
+            log_raw_input: false,
+            max_input_bytes: default_max_input_bytes(),
+            on_oversize: OnOversize::default(),
+        }
+    }
+}
+
+fn default_max_input_bytes() -> usize {
+    32_000
+}
+
+/// What to do with an input longer than `Defaults::max_input_bytes`.
+///
+/// Its first `max_input_bytes` are always inspected, and any match there
+/// counts as usual; this policy is the *floor* applied on top, because an
+/// attacker controls what sits in the uninspected tail.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum OnOversize {
+    /// Fail-closed (default): an input that can't be fully inspected is
+    /// blocked. Padding a payload past the limit can't sneak it through.
+    #[default]
+    Block,
+    /// Flag it for review and let it through, unless the inspected part
+    /// already warrants a block. Choose this only if long inputs are
+    /// expected and a human reviews flags -- a payload placed past the
+    /// limit is *not* detected.
+    Flag,
 }
 
 /// Behavior on internal evaluation failure (design decision: fail-closed

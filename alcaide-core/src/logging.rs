@@ -20,6 +20,7 @@ pub struct LogRecord {
     pub verdict: Verdict,
     pub matched_rules: Vec<MatchDetail>,
     pub latency_us: u128,
+    pub input_truncated: bool,
     pub rule_set_version: u32,
     pub input_hash: String,
     /// `None` unless `log_raw_input` is explicitly enabled. Privacy
@@ -45,6 +46,7 @@ pub fn build_log_record(
         verdict: decision.evaluated_verdict,
         matched_rules: decision.matched_rules.clone(),
         latency_us: decision.latency.as_micros(),
+        input_truncated: decision.input_truncated,
         rule_set_version,
         input_hash,
         input_snippet,
@@ -63,6 +65,7 @@ mod tests {
             matched_rules: Vec::new(),
             latency: Duration::from_micros(42),
             mode: Mode::Enforcement,
+            input_truncated: false,
         }
     }
 
