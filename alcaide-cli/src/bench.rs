@@ -161,6 +161,13 @@ fn load_corpus(path: &Path) -> Result<Vec<CorpusEntry>, String> {
 }
 
 fn measure(detector: &Detector, corpus: &[CorpusEntry]) -> Tally {
+    // Warm-up pass, discarded: the first evaluations pay one-time costs
+    // (lazily built regex caches) that would otherwise dominate p99 on a
+    // small corpus, while a long-running service pays them once.
+    for entry in corpus {
+        detector.evaluate(&entry.prompt, None);
+    }
+
     let mut tally = Tally::default();
     for entry in corpus {
         let decision = detector.evaluate(&entry.prompt, None);
