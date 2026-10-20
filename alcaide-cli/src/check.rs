@@ -1,28 +1,21 @@
 //! `alcaide check` — evaluate a single input against a rule set.
 
-use alcaide_core::{Detector, MatchDetail, Mode, Verdict};
-use serde::Serialize;
+use alcaide_core::{Mode, Verdict};
+use std::io::Read;
 use std::path::Path;
 
-use crate::EXIT_USAGE_ERROR;
+use crate::{load_detector, EXIT_USAGE_ERROR};
 
-/// JSON shape for `--json`. Reuses the already-public, already-Serialize
-/// types (`Verdict`, `Mode`, `MatchDetail`) rather than depending on
-/// alcaide-core's internal log record format.
-#[derive(Serialize)]
-struct CheckOutput<'a> {
-    verdict: Verdict,
-    evaluated_verdict: Verdict,
-    matched_rules: &'a [MatchDetail],
-    latency_us: u128,
-    mode: Mode,
-}
-
-pub fn run(text: &str, rules_path: &Path, json: bool) -> u8 {
-    let detector = match Detector::from_config_path(rules_path) {
+pub fn run(text: Option<&str>, file: Option<&Path>, rules: Option<&Path>, json: bool) -> u8 {
+    let detector = match load_detector(rules) {
         Ok(detector) => detector,
+        Err(code) => return code,
+    };
+
+    let input = match read_input(text, file) {
+        Ok(input) => input,
         Err(error) => {
-            eprintln!("Error loading {}: {error}", rules_path.display());
+            eprintln!("Error reading input: {error}");
             return EXIT_USAGE_ERROR;
         }
     };
@@ -31,17 +24,10 @@ pub fn run(text: &str, rules_path: &Path, json: bool) -> u8 {
     // produced (`evaluated_verdict`), not the caller-facing `verdict` --
     // someone running `alcaide check` wants to know what actually matched,
     // not what a shadow-mode caller happens to receive.
-    let decision = detector.evaluate(text, None);
+    let decision = detector.evaluate(&input, None);
 
     if json {
-        let output = CheckOutput {
-            verdict: decision.verdict,
-            evaluated_verdict: decision.evaluated_verdict,
-            matched_rules: &decision.matched_rules,
-            latency_us: decision.latency.as_micros(),
-            mode: decision.mode,
-        };
-        match serde_json::to_string(&output) {
+        match serde_json::to_string(&decision) {
             Ok(json) => println!("{json}"),
             Err(error) => {
                 eprintln!("Error serializing output: {error}");
@@ -53,14 +39,21 @@ pub fn run(text: &str, rules_path: &Path, json: bool) -> u8 {
         if decision.mode == Mode::Shadow && decision.verdict != decision.evaluated_verdict {
             println!("(shadow mode: a real caller would receive Allow instead)");
         }
+        if decision.input_truncated {
+            println!("(input exceeded max_input_bytes: only its beginning was inspected)");
+        }
         if decision.matched_rules.is_empty() {
             println!("No rules matched.");
         } else {
             println!("Matched rules:");
             for m in &decision.matched_rules {
+                let (start, end) = m.span;
                 println!(
-                    "  {} ({:?}, {:?}) at {:?}",
-                    m.rule_id, m.category, m.severity, m.span
+                    "  {} ({:?}, {:?}) at {start}..{end}: {:?}",
+                    m.rule_id,
+                    m.category,
+                    m.severity,
+                    &input[start..end]
                 );
             }
         }
@@ -71,5 +64,19 @@ pub fn run(text: &str, rules_path: &Path, json: bool) -> u8 {
         Verdict::Allow => 0,
         Verdict::Block => 1,
         Verdict::Flag => 2,
+    }
+}
+
+/// The text to evaluate: `text` itself, the contents of `file`, or standard
+/// input when neither is given (or `text` is "-").
+fn read_input(text: Option<&str>, file: Option<&Path>) -> std::io::Result<String> {
+    match (text, file) {
+        (Some(text), _) if text != "-" => Ok(text.to_string()),
+        (_, Some(file)) => std::fs::read_to_string(file),
+        _ => {
+            let mut input = String::new();
+            std::io::stdin().read_to_string(&mut input)?;
+            Ok(input)
+        }
     }
 }
