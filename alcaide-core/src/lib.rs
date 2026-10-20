@@ -241,21 +241,16 @@ impl Detector {
             .find_matches(&normalized)
             .into_iter()
             .filter_map(|m| {
-                // Invariant: every id the Matcher can produce comes from
-                // this same rule set (Matcher::build is only ever called
-                // with self.rules). A miss here would be a bug elsewhere,
+                // Invariant: the Matcher was built from this same rule set,
+                // so every index is valid. A miss would be a bug elsewhere,
                 // not attacker-controlled input -- skip rather than panic,
                 // consistent with evaluate()'s never-panics guarantee.
-                self.rules
-                    .rules
-                    .iter()
-                    .find(|r| r.id == m.rule_id)
-                    .map(|rule| MatchDetail {
-                        rule_id: m.rule_id,
-                        category: rule.category,
-                        severity: rule.severity,
-                        span: normalized.original_span(m.span),
-                    })
+                self.rules.rules.get(m.rule_index).map(|rule| MatchDetail {
+                    rule_id: rule.id.clone(),
+                    category: rule.category,
+                    severity: rule.severity,
+                    span: normalized.original_span(m.span),
+                })
             })
             .collect()
     }
@@ -264,6 +259,13 @@ impl Detector {
     /// See `logging::build_log_record` for the privacy guarantee (raw
     /// input hashed, never logged verbatim by default).
     fn log_decision(&self, decision: &Decision, input: &str, request_id: Option<&str>) {
+        // Hashing the input and serializing the record are the costliest
+        // part of an evaluation of short input: skip them when no
+        // subscriber would receive the event.
+        if !tracing::enabled!(target: "alcaide::decision", tracing::Level::INFO) {
+            return;
+        }
+
         let record = logging::build_log_record(
             decision,
             input,

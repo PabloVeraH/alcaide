@@ -169,13 +169,26 @@ fn fold(input: &str, mut offsets: Option<&mut OffsetMap>) -> String {
     let mut out = String::with_capacity(input.len());
     let mut nfkc = String::new();
     let mut last_was_space = false;
+    let mut start = 0;
 
-    for unit in units(input) {
+    while start < input.len() {
+        // Fast path: a run of non-whitespace ASCII is unchanged by every
+        // stage, so it's copied in bulk and needs no offset entry. This is
+        // most of any real prompt.
+        let run_end = ascii_run_end(input, start);
+        if run_end > start {
+            out.push_str(&input[start..run_end]);
+            last_was_space = false;
+            start = run_end;
+            continue;
+        }
+
+        let unit = start..unit_end(input, start);
         let original = &input[unit.clone()];
         let out_start = out.len();
 
         if let [byte] = original.as_bytes() {
-            // ASCII fast path: NFKC is the identity on ASCII.
+            // ASCII whitespace: NFKC is the identity on ASCII.
             push_folded(char::from(*byte), &mut out, &mut last_was_space);
         } else {
             nfkc.clear();
@@ -187,35 +200,46 @@ fn fold(input: &str, mut offsets: Option<&mut OffsetMap>) -> String {
 
         if let Some(offsets) = offsets.as_deref_mut() {
             if out[out_start..] != *original {
-                offsets.record(out_start..out.len(), unit);
+                offsets.record(out_start..out.len(), unit.clone());
             }
         }
+        start = unit.end;
     }
 
     out
 }
 
-/// Splits `input` into byte ranges, each a character followed by any
-/// combining marks (non-zero canonical combining class).
+/// End of the run of non-whitespace ASCII starting at `start` -- minus its
+/// last character if a non-ASCII character follows, since that could be a
+/// combining mark that NFKC must compose with it.
+fn ascii_run_end(input: &str, start: usize) -> usize {
+    let bytes = input.as_bytes();
+    let len = bytes[start..]
+        .iter()
+        .position(|&b| !b.is_ascii() || char::from(b).is_whitespace())
+        .unwrap_or(bytes.len() - start);
+    let end = start + len;
+    if end < bytes.len() && !bytes[end].is_ascii() {
+        end.saturating_sub(1).max(start)
+    } else {
+        end
+    }
+}
+
+/// End of the "unit" starting at `start`: one character plus any combining
+/// marks (non-zero canonical combining class) that follow it.
 ///
 /// ponytail: Hangul conjoining jamo are all "starters", so a decomposed
 /// jamo sequence is NFKC'd one jamo at a time and stays decomposed. It's
 /// only reachable with deliberately decomposed Korean; precomposed
 /// syllables (the normal form) are unaffected.
-fn units(input: &str) -> impl Iterator<Item = Range<usize>> + '_ {
-    let mut chars = input.char_indices().peekable();
-    std::iter::from_fn(move || {
-        let (start, first) = chars.next()?;
-        let mut end = start + first.len_utf8();
-        while let Some(&(i, c)) = chars.peek() {
-            if canonical_combining_class(c) == 0 {
-                break;
-            }
-            end = i + c.len_utf8();
-            chars.next();
-        }
-        Some(start..end)
-    })
+fn unit_end(input: &str, start: usize) -> usize {
+    let mut chars = input[start..].char_indices();
+    chars.next(); // the unit's first character, whatever it is
+    chars
+        // ASCII is never a combining mark; skip the table lookup.
+        .find(|&(_, c)| c.is_ascii() || canonical_combining_class(c) == 0)
+        .map_or(input.len(), |(i, _)| start + i)
 }
 
 /// Stages 2-5 for one (already NFKC'd) character.
@@ -561,6 +585,42 @@ mod tests {
         let result = normalize("instrucci\u{006F}\u{0301}n");
 
         assert_eq!(result.normalized_text, "instrucción");
+    }
+
+    /// Test oracle: the same stages applied strictly one unit at a time,
+    /// without the bulk ASCII fast path.
+    fn fold_unit_by_unit(input: &str) -> String {
+        let (mut out, mut last_was_space, mut start) = (String::new(), false, 0);
+        while start < input.len() {
+            let end = unit_end(input, start);
+            for c in input[start..end].nfkc() {
+                push_folded(c, &mut out, &mut last_was_space);
+            }
+            start = end;
+        }
+        out
+    }
+
+    proptest::proptest! {
+        #[test]
+        fn the_ascii_fast_path_folds_exactly_like_unit_by_unit(
+            input in "[a-zA-Z .\t\n\u{0301}\u{0308}\u{00E9}\u{0430}\u{200B}\u{FF21}\u{E0041}]{0,40}"
+        ) {
+            proptest::prop_assert_eq!(fold(&input, None), fold_unit_by_unit(&input));
+        }
+    }
+
+    #[test]
+    fn an_ascii_letter_composes_with_a_following_combining_mark() {
+        // The bulk ASCII fast path must leave the last letter of a run to
+        // the per-unit path when a combining mark follows it.
+        for (input, expected) in [
+            ("e\u{0301}", "é"),
+            ("cafe\u{0301} ok", "café ok"),
+            ("ab\u{0301}\u{0301}c", "ab\u{0301}\u{0301}c"), // no precomposed form
+        ] {
+            assert_eq!(normalize(input).normalized_text, expected, "{input:?}");
+        }
     }
 
     #[test]

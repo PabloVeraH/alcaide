@@ -44,5 +44,17 @@ fn bench_matching(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, bench_matching);
+fn bench_normalization(c: &mut Criterion) {
+    // The normalization stage alone, on ~30KB of mostly-ASCII prose: the
+    // per-character work every evaluation pays before matching starts.
+    let paragraph = "Résumé of the quarterly meeting: the team reviewed the roadmap, \
+                     discussed latency budgets and agreed on next steps. ";
+    let text = paragraph.repeat(31_000 / paragraph.len());
+
+    c.bench_function("normalize_30kb", |b| {
+        b.iter(|| normalize(&text));
+    });
+}
+
+criterion_group!(benches, bench_matching, bench_normalization);
 criterion_main!(benches);
