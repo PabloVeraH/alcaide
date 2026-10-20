@@ -2,17 +2,27 @@
 name = "alcaide-cli"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Alcaide CLI"
+description = "Command-line interface for Alcaide, a deterministic prompt-injection firewall"
+keywords.workspace = true
+categories = ["command-line-utilities", "text-processing"]
+readme = "../README.md"
 
 [[bin]]
 name = "alcaide"
 path = "src/main.rs"
+# The binary has no library API to document; this also avoids a doc
+# output collision with the Python extension, also named `alcaide`.
+doc = false
 
 [dependencies]
 alcaide-core = { workspace = true }
 clap = { workspace = true }
 serde = { workspace = true }
-serde_yaml = { workspace = true }
+serde-saphyr = { workspace = true }
 serde_json = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"

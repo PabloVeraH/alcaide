@@ -3,48 +3,53 @@
 //! Privacy-first by construction: the raw input is hashed (SHA-256) by
 //! default and never logged verbatim unless `log_raw_input` is explicitly
 //! enabled in the rule set's `defaults`.
+//!
+//! The record carries no timestamp of its own: the `tracing` subscriber
+//! stamps every event it writes.
 
 use crate::decision::{Decision, MatchDetail, Mode, Verdict};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
-/// One structured log record per `Detector::evaluate` call.
+/// One structured log record per `Detector::evaluate` call. Borrows from
+/// the `Decision` it describes; it only lives long enough to be
+/// serialized.
 #[derive(Debug, Clone, Serialize)]
-pub struct LogRecord {
-    pub timestamp: String,
-    pub request_id: Option<String>,
+pub struct LogRecord<'a> {
+    pub request_id: Option<&'a str>,
     pub mode: Mode,
     /// The real evaluation result, even in `Shadow` mode -- see
     /// `Decision::evaluated_verdict`. This is the field to use to
     /// calibrate before switching to enforcement.
     pub verdict: Verdict,
-    pub matched_rules: Vec<MatchDetail>,
+    pub matched_rules: &'a [MatchDetail],
     pub latency_us: u128,
+    pub input_truncated: bool,
     pub rule_set_version: u32,
     pub input_hash: String,
     /// `None` unless `log_raw_input` is explicitly enabled. Privacy
     /// guarantee -- do not change this default without a deliberate,
     /// reviewed decision.
-    pub input_snippet: Option<String>,
+    pub input_snippet: Option<&'a str>,
 }
 
-pub fn build_log_record(
-    decision: &Decision,
-    input: &str,
-    request_id: Option<&str>,
+pub fn build_log_record<'a>(
+    decision: &'a Decision,
+    input: &'a str,
+    request_id: Option<&'a str>,
     rule_set_version: u32,
     log_raw_input: bool,
-) -> LogRecord {
+) -> LogRecord<'a> {
     let input_hash = format!("{:x}", Sha256::digest(input.as_bytes()));
-    let input_snippet = log_raw_input.then(|| input.to_string());
+    let input_snippet = log_raw_input.then_some(input);
 
     LogRecord {
-        timestamp: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
-        request_id: request_id.map(str::to_string),
+        request_id,
         mode: decision.mode,
         verdict: decision.evaluated_verdict,
-        matched_rules: decision.matched_rules.clone(),
+        matched_rules: &decision.matched_rules,
         latency_us: decision.latency.as_micros(),
+        input_truncated: decision.input_truncated,
         rule_set_version,
         input_hash,
         input_snippet,
@@ -63,6 +68,7 @@ mod tests {
             matched_rules: Vec::new(),
             latency: Duration::from_micros(42),
             mode: Mode::Enforcement,
+            input_truncated: false,
         }
     }
 
@@ -86,10 +92,7 @@ mod tests {
         let decision = sample_decision(Verdict::Allow, Verdict::Allow);
         let record = build_log_record(&decision, "sensitive user prompt", None, 1, true);
 
-        assert_eq!(
-            record.input_snippet.as_deref(),
-            Some("sensitive user prompt")
-        );
+        assert_eq!(record.input_snippet, Some("sensitive user prompt"));
     }
 
     #[test]
@@ -125,6 +128,6 @@ mod tests {
         let decision = sample_decision(Verdict::Allow, Verdict::Allow);
         let record = build_log_record(&decision, "text", Some("req-123"), 1, false);
 
-        assert_eq!(record.request_id.as_deref(), Some("req-123"));
+        assert_eq!(record.request_id, Some("req-123"));
     }
 }

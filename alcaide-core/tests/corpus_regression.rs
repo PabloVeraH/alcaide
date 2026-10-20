@@ -1,9 +1,8 @@
 //! Regression test against the curated default rule set
 //! (`rules/default.yaml`) and its labeled test corpus
-//! (`tests/corpus/prompts.yaml`). See milestone M6.
+//! (`tests/corpus/prompts.yaml`).
 //!
-//! This is a small-scale preview of the full benchmark milestone M10 will
-//! run against the complete curated set -- here we verify our own
+//! Unlike `alcaide bench` (which reports rates), this verifies our own
 //! measured PREDICTIONS (including documented gaps and documented false
 //! positives, see `prompts.yaml`) match reality, not that detection is
 //! perfect. If a prediction drifts, that's a real signal to investigate,
@@ -27,7 +26,7 @@ struct CorpusEntry {
 fn load_corpus() -> Vec<CorpusEntry> {
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/corpus/prompts.yaml");
     let yaml = std::fs::read_to_string(path).expect("corpus file exists");
-    serde_yaml::from_str(&yaml).expect("valid corpus YAML")
+    serde_saphyr::from_str(&yaml).expect("valid corpus YAML")
 }
 
 fn default_detector() -> Detector {
@@ -79,9 +78,8 @@ fn corpus_predictions_match_measured_reality() {
 
 #[test]
 fn reports_measured_detection_and_false_positive_rates() {
-    // Not a pass/fail gate -- prints the honest numbers this milestone's
-    // corpus was built to measure (PRD success metrics), the same way
-    // M10 will report at full scale against the real, larger corpus.
+    // Not a pass/fail gate -- prints the honest numbers this corpus was
+    // built to measure (see BENCHMARKS.md).
     let detector = default_detector();
     let corpus = load_corpus();
 

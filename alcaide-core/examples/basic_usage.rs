@@ -1,16 +1,14 @@
 //! End-to-end usage example against the curated default rule set
-//! (`rules/default.yaml`, milestone M6). Run with:
+//! (`rules/default.yaml`). Run with:
 //!
 //! ```sh
 //! cargo run -p alcaide-core --example basic_usage
 //! ```
 
 use alcaide_core::{Detector, Verdict};
-use std::path::Path;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rules_path = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/rules/default.yaml"));
-    let detector = Detector::from_config_path(rules_path)?;
+fn main() {
+    let detector = Detector::with_default_rules();
 
     let prompts = [
         "What's the weather like today?",
@@ -25,18 +23,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if decision.verdict == Verdict::Allow && decision.evaluated_verdict != Verdict::Allow {
             // The shipped default.yaml defaults to shadow mode -- the
             // caller always gets Allow, but the real result is still
-            // shown here and would be in the structured log (see M5).
+            // shown here and would be in the structured log.
             print!(" (shadow mode: caller receives Allow, this is the real result)");
         }
         println!();
 
         for m in &decision.matched_rules {
+            let (start, end) = m.span;
             println!(
-                "    matched: {} ({:?}, {:?})",
-                m.rule_id, m.category, m.severity
+                "    matched: {} ({:?}, {:?}) on {:?}",
+                m.rule_id,
+                m.category,
+                m.severity,
+                &prompt[start..end]
             );
         }
     }
-
-    Ok(())
 }

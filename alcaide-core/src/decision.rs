@@ -17,21 +17,27 @@ pub enum Mode {
     Enforcement,
 }
 
-/// The outcome of one evaluation.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+/// The outcome of one evaluation. Ordered by strictness:
+/// `Allow < Flag < Block`.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "lowercase")]
 pub enum Verdict {
     /// No match at or above the configured block threshold.
     Allow,
-    /// A match at or above the configured block threshold.
-    Block,
     /// A match below the block threshold -- worth a human's attention,
     /// not severe enough to block on its own.
     Flag,
+    /// A match at or above the configured block threshold.
+    Block,
 }
 
 /// Result returned by [`Detector::evaluate`](crate::Detector::evaluate).
-#[derive(Debug, Clone)]
+///
+/// Serializes to JSON with `latency` as integer microseconds
+/// (`latency_us`). `#[non_exhaustive]`: fields may be added in a minor
+/// release.
+#[derive(Debug, Clone, Serialize)]
+#[non_exhaustive]
 pub struct Decision {
     /// The verdict actually enforced for the caller. In `Shadow` mode this
     /// is always `Allow`, regardless of what the rules found -- see
@@ -48,14 +54,25 @@ pub struct Decision {
     /// was configured, in which case it's also empty).
     pub matched_rules: Vec<MatchDetail>,
     /// Wall-clock time spent evaluating, excluding log emission.
+    #[serde(rename = "latency_us", serialize_with = "serialize_micros")]
     pub latency: Duration,
     /// The mode this evaluation ran under.
     pub mode: Mode,
+    /// `true` if the input exceeded `max_input_bytes` and only its prefix
+    /// was inspected -- explains a `Flag`/`Block` with no matched rules
+    /// (see `OnOversize`).
+    pub input_truncated: bool,
+}
+
+fn serialize_micros<S: serde::Serializer>(latency: &Duration, s: S) -> Result<S::Ok, S::Error> {
+    s.serialize_u128(latency.as_micros())
 }
 
 /// A single match within a [`Decision`], enriched with the matched rule's
-/// own category and severity.
+/// own category and severity. `#[non_exhaustive]`: fields may be added in
+/// a minor release.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct MatchDetail {
     /// The id of the [`Rule`](crate::Rule) that matched.
     pub rule_id: String,
@@ -65,7 +82,47 @@ pub struct MatchDetail {
     /// Copied from the matched rule, so a log line is self-contained
     /// without cross-referencing the rule set.
     pub severity: Severity,
-    /// `(start, end)` byte offsets in the normalized text, not the raw
-    /// input.
+    /// `(start, end)` byte offsets into the caller's original input
+    /// (`&input[start..end]` is always valid), widened to whole characters
+    /// where normalization changed them. A match inside a decoded
+    /// base64/hex payload points at the encoded payload.
     pub span: (usize, usize),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn decision_serializes_with_latency_in_microseconds() {
+        let decision = Decision {
+            verdict: Verdict::Allow,
+            evaluated_verdict: Verdict::Block,
+            matched_rules: vec![MatchDetail {
+                rule_id: "r".to_string(),
+                category: Category::Jailbreak,
+                severity: Severity::High,
+                span: (0, 3),
+            }],
+            latency: Duration::from_micros(42),
+            mode: Mode::Shadow,
+            input_truncated: false,
+        };
+
+        let json: serde_json::Value = serde_json::to_value(&decision).expect("serializes");
+
+        assert_eq!(
+            json,
+            serde_json::json!({
+                "verdict": "allow",
+                "evaluated_verdict": "block",
+                "matched_rules": [
+                    {"rule_id": "r", "category": "jailbreak", "severity": "high", "span": [0, 3]}
+                ],
+                "latency_us": 42,
+                "mode": "shadow",
+                "input_truncated": false
+            })
+        );
+    }
 }

@@ -2,25 +2,31 @@
 name = "alcaide-core"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Alcaide's deterministic rule engine — no network dependencies"
+description = "Deterministic, auditable prompt-injection detection for LLM inputs — no network dependencies"
+keywords.workspace = true
+categories = ["text-processing"]
+readme = "../README.md"
 
 [dependencies]
 aho-corasick = { workspace = true }
 regex = { workspace = true }
+regex-syntax = { workspace = true }
 unicode-normalization = { workspace = true }
 serde = { workspace = true }
-serde_yaml = { workspace = true }
+serde-saphyr = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 base64 = { workspace = true }
 sha2 = { workspace = true }
-chrono = { workspace = true }
 serde_json = { workspace = true }
 
 [dev-dependencies]
+proptest = "1"
 tempfile = "3"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "std"] }
 criterion = "0.5"
 
 [[bench]]

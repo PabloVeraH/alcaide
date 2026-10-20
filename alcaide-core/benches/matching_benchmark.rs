@@ -1,14 +1,9 @@
-//! Preliminary matching-engine benchmark (milestone M3).
-//!
-//! ~1000 synthetic literal rules, to sanity-check RNF1 (p99 < 5ms) before
-//! investing in curating the real default rule set. This is NOT the final
-//! verification: milestone M10 re-measures against the real, curated rule
-//! set and publishes the results.
+//! Matching-engine scalability benchmark: ~1000 synthetic literal rules,
+//! to check the matcher alone stays fast as a rule set grows. For the
+//! end-to-end numbers against the real rule set, see
+//! `real_rules_benchmark.rs`.
 
-use alcaide_core::{
-    Category, Defaults, Matcher, Mode, NormalizedInput, OnError, PatternType, Rule, RuleSet,
-    Severity,
-};
+use alcaide_core::{normalize, Category, Defaults, Matcher, PatternType, Rule, RuleSet, Severity};
 use criterion::{criterion_group, criterion_main, Criterion};
 
 const SYNTHETIC_RULE_COUNT: usize = 1000;
@@ -20,7 +15,7 @@ fn synthetic_rule_set(count: usize) -> RuleSet {
             category: Category::InjectionGeneric,
             severity: Severity::Medium,
             pattern_type: PatternType::Literal,
-            pattern: Some(format!("synthetic-evasion-pattern-{i}")),
+            pattern: format!("synthetic-evasion-pattern-{i}"),
             enabled: true,
             notes: None,
         })
@@ -28,12 +23,7 @@ fn synthetic_rule_set(count: usize) -> RuleSet {
 
     RuleSet {
         version: 1,
-        defaults: Defaults {
-            mode: Mode::Shadow,
-            block_threshold: Severity::High,
-            on_error: OnError::Block,
-            log_raw_input: false,
-        },
+        defaults: Defaults::default(),
         rules,
     }
 }
@@ -43,19 +33,28 @@ fn bench_matching(c: &mut Criterion) {
     let matcher = Matcher::build(&rule_set).expect("synthetic rule set compiles");
 
     // Worst case for a pure literal scan: realistic-length prompt, no hits.
-    let text = "Could you help me understand how transformer attention mechanisms work \
-                in modern large language models, specifically regarding multi-head \
-                attention and positional encoding schemes used in practice?";
-    let normalized = NormalizedInput {
-        original_len: text.len(),
-        normalized_text: text.to_string(),
-        decode_applied: Vec::new(),
-    };
+    let normalized = normalize(
+        "Could you help me understand how transformer attention mechanisms work \
+         in modern large language models, specifically regarding multi-head \
+         attention and positional encoding schemes used in practice?",
+    );
 
     c.bench_function("match_1000_synthetic_rules_no_hit", |b| {
         b.iter(|| matcher.find_matches(&normalized));
     });
 }
 
-criterion_group!(benches, bench_matching);
+fn bench_normalization(c: &mut Criterion) {
+    // The normalization stage alone, on ~30KB of mostly-ASCII prose: the
+    // per-character work every evaluation pays before matching starts.
+    let paragraph = "Résumé of the quarterly meeting: the team reviewed the roadmap, \
+                     discussed latency budgets and agreed on next steps. ";
+    let text = paragraph.repeat(31_000 / paragraph.len());
+
+    c.bench_function("normalize_30kb", |b| {
+        b.iter(|| normalize(&text));
+    });
+}
+
+criterion_group!(benches, bench_matching, bench_normalization);
 criterion_main!(benches);

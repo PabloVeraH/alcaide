@@ -1,0 +1,35 @@
+# cargo-deny configuration: `cargo deny check` in CI.
+# https://embarkstudios.github.io/cargo-deny/
+
+[graph]
+all-features = true
+
+[advisories]
+# Any RustSec advisory (vulnerable, unmaintained, unsound, yanked) fails.
+yanked = "deny"
+
+[licenses]
+# Permissive licenses only, plus this project's own AGPL.
+allow = [
+    "AGPL-3.0-only",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-3-Clause",
+    "MIT",
+    "Unicode-3.0",
+    "Unlicense",
+    "Zlib",
+]
+confidence-threshold = 0.9
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+# Path dependencies inside this workspace carry a version too, but don't
+# trip the wildcard check.
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
