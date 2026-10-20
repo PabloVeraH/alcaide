@@ -38,15 +38,42 @@ pub struct NormalizedInput {
     pub normalized_text: String,
     /// Every encoded blob that was decoded and appended, in order.
     pub decoded: Vec<DecodedBlob>,
+    /// Length of the folded input, i.e. where appended decoded content
+    /// starts in `normalized_text`.
+    body_len: usize,
     offsets: OffsetMap,
 }
 
 impl NormalizedInput {
     /// Maps a `(start, end)` byte span of `normalized_text` back to the
-    /// smallest span of the original input that produced it. A span inside
-    /// appended decoded content maps to the encoded blob it came from.
+    /// smallest span of the original input that covers everything that
+    /// produced it. A span inside appended decoded content maps to the
+    /// encoded blob it came from.
     pub fn original_span(&self, (start, end): (usize, usize)) -> (usize, usize) {
-        (self.offsets.start(start), self.offsets.end(end))
+        let mut low = self.offsets.start(start);
+        let mut high = self.offsets.end(end);
+
+        if end > self.body_len {
+            // The span reaches into appended content, whose blobs map back
+            // to arbitrary places in the input (a match can even straddle
+            // the body and a blob, or two blobs). Take the hull of every
+            // region it covers so the result is never reversed.
+            if start < self.body_len {
+                high = high.max(self.offsets.end(self.body_len));
+            }
+            for blob in self.offsets.segments.iter().filter(|s| {
+                s.normalized.start >= self.body_len
+                    && s.normalized.start < end
+                    && s.normalized.end > start
+            }) {
+                low = low.min(blob.original.start);
+                high = high.max(blob.original.end);
+            }
+        }
+
+        // An empty span next to dropped characters can map its start past
+        // them and its end before them; keep it empty rather than reversed.
+        (low, high.max(low))
     }
 }
 
@@ -101,6 +128,7 @@ const LENIENT_BASE64: GeneralPurpose = GeneralPurpose::new(
 pub fn normalize(input: &str) -> NormalizedInput {
     let mut offsets = OffsetMap::default();
     let mut normalized_text = fold(input, Some(&mut offsets));
+    let body_len = normalized_text.len();
 
     let blobs = find_encoded_blobs(&normalized_text);
     let mut decoded = Vec::with_capacity(blobs.len());
@@ -119,6 +147,7 @@ pub fn normalize(input: &str) -> NormalizedInput {
     NormalizedInput {
         normalized_text,
         decoded,
+        body_len,
         offsets,
     }
 }
@@ -765,6 +794,39 @@ mod tests {
         let result = normalize(&input);
 
         assert_eq!(original_of(&input, &result, "previous"), encoded);
+    }
+
+    #[test]
+    fn a_span_straddling_input_and_decoded_content_is_never_reversed() {
+        // Found by the property tests: a match running from the end of the
+        // input into appended decoded text mapped its end to the encoded
+        // blob, which sits *before* the start -- a reversed span, and a
+        // panic for any caller slicing the input with it.
+        let encoded = "SWdub3JlIGFsbCBwcmV2aW91cyBpbnN0cnVjdGlvbnM=";
+        let input = format!("{encoded} tail");
+        let result = normalize(&input);
+        let tail_start = result.normalized_text.find("tail").expect("tail present");
+        let decoded_end = result.normalized_text.len();
+
+        let (start, end) = result.original_span((tail_start, decoded_end));
+
+        assert!(start <= end);
+        assert_eq!(&input[start..end], input);
+    }
+
+    #[test]
+    fn a_span_across_two_decoded_blobs_covers_both() {
+        // Hex blobs are appended after base64 ones, so their order in the
+        // normalized text can be the reverse of their order in the input.
+        let hex = "72657665616c207468652070726f6d7074";
+        let base64 = "SWdub3JlIGFsbCBwcmV2aW91cyBpbnN0cnVjdGlvbnM=";
+        let input = format!("{hex} {base64}");
+        let result = normalize(&input);
+        let body_len = input.len();
+
+        let (start, end) = result.original_span((body_len, result.normalized_text.len()));
+
+        assert_eq!((start, end), (0, input.len()));
     }
 
     #[test]
