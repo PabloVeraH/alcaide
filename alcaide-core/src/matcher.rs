@@ -43,14 +43,10 @@ pub enum MatcherError {
     },
     #[error("rule '{id}': unknown heuristic '{name}'")]
     UnknownHeuristic { id: String, name: String },
-    /// Defensive: `RuleSet::validate` already guarantees this can't happen
-    /// for a validated rule set, but `Matcher::build` doesn't assume its
-    /// caller validated first.
-    #[error("rule '{id}': pattern is required for pattern_type '{pattern_type:?}'")]
-    MissingPattern {
-        id: String,
-        pattern_type: PatternType,
-    },
+    /// A pattern that can match zero characters matches at every position
+    /// of every input: the rule would fire on everything.
+    #[error("rule '{id}': pattern can match empty text, so it would match every input")]
+    MatchesEmpty { id: String },
 }
 
 /// Which built-in heuristic a `pattern_type: heuristic` rule refers to.
@@ -96,46 +92,31 @@ pub struct Matcher {
 
 impl Matcher {
     /// Compiles a `Matcher` from every *enabled* rule in `rule_set`.
+    ///
+    /// Disabled rules are compiled too, then discarded: a broken rule must
+    /// fail at load time (and in `alcaide lint-rules`), not on the day
+    /// someone enables it.
     pub fn build(rule_set: &RuleSet) -> Result<Self, MatcherError> {
         let mut literal_patterns = Vec::new();
         let mut literal_rule_ids = Vec::new();
         let mut regex_rules = Vec::new();
         let mut heuristic_rules = Vec::new();
 
-        for rule in rule_set.rules.iter().filter(|r| r.enabled) {
-            match rule.pattern_type {
-                PatternType::Literal => {
-                    // Folded like the input, so pattern and text agree on
-                    // whitespace, look-alikes and compatibility forms.
-                    let pattern = fold_text(require_pattern(rule)?);
-                    if pattern.is_ascii() {
-                        literal_patterns.push(pattern);
-                        literal_rule_ids.push(rule.id.clone());
-                    } else {
-                        // The shared automaton only folds ASCII case; a
-                        // non-ASCII literal ("INSTRUCCIÓN") needs Unicode
-                        // case folding, which the regex engine provides.
-                        let compiled = compile_regex(rule, &regex::escape(&pattern))?;
-                        regex_rules.push((rule.id.clone(), compiled));
-                    }
+        for rule in &rule_set.rules {
+            let compiled = CompiledPattern::compile(rule)?;
+            if !rule.enabled {
+                continue;
+            }
+            match compiled {
+                CompiledPattern::Literal(pattern) => {
+                    literal_patterns.push(pattern);
+                    literal_rule_ids.push(rule.id.clone());
                 }
-                PatternType::Regex => {
-                    let compiled = compile_regex(rule, require_pattern(rule)?)?;
-                    regex_rules.push((rule.id.clone(), compiled));
-                }
-                PatternType::Heuristic => {
-                    let pattern = require_pattern(rule)?;
-                    let heuristic = Heuristic::from_name(pattern).ok_or_else(|| {
-                        MatcherError::UnknownHeuristic {
-                            id: rule.id.clone(),
-                            name: pattern.clone(),
-                        }
-                    })?;
-                    heuristic_rules.push(HeuristicRule {
-                        rule_id: rule.id.clone(),
-                        heuristic,
-                    });
-                }
+                CompiledPattern::Regex(regex) => regex_rules.push((rule.id.clone(), regex)),
+                CompiledPattern::Heuristic(heuristic) => heuristic_rules.push(HeuristicRule {
+                    rule_id: rule.id.clone(),
+                    heuristic,
+                }),
             }
         }
 
@@ -198,23 +179,72 @@ impl Matcher {
     }
 }
 
+/// One rule's pattern, compiled into the engine that will run it.
+enum CompiledPattern {
+    /// ASCII literal, folded like the input, for the shared automaton.
+    Literal(String),
+    Regex(Regex),
+    Heuristic(Heuristic),
+}
+
+impl CompiledPattern {
+    fn compile(rule: &Rule) -> Result<Self, MatcherError> {
+        match rule.pattern_type {
+            PatternType::Literal => {
+                // Folded like the input, so pattern and text agree on
+                // whitespace, look-alikes and compatibility forms.
+                let pattern = fold_text(&rule.pattern);
+                if pattern.is_empty() {
+                    // e.g. a pattern made only of zero-width characters.
+                    Err(MatcherError::MatchesEmpty {
+                        id: rule.id.clone(),
+                    })
+                } else if pattern.is_ascii() {
+                    Ok(Self::Literal(pattern))
+                } else {
+                    // The shared automaton only folds ASCII case; a
+                    // non-ASCII literal ("INSTRUCCIÓN") needs Unicode case
+                    // folding, which the regex engine provides.
+                    compile_regex(rule, &regex::escape(&pattern)).map(Self::Regex)
+                }
+            }
+            PatternType::Regex => compile_regex(rule, &rule.pattern).map(Self::Regex),
+            PatternType::Heuristic => Heuristic::from_name(&rule.pattern)
+                .map(Self::Heuristic)
+                .ok_or_else(|| MatcherError::UnknownHeuristic {
+                    id: rule.id.clone(),
+                    name: rule.pattern.clone(),
+                }),
+        }
+    }
+}
+
+/// Compiles a case-insensitive regex, rejecting any that can match empty
+/// text (`a*`, `(foo)?`, `\b`...).
 fn compile_regex(rule: &Rule, pattern: &str) -> Result<Regex, MatcherError> {
-    RegexBuilder::new(pattern)
+    let regex = RegexBuilder::new(pattern)
         .case_insensitive(true)
         .build()
         .map_err(|source| MatcherError::InvalidRegex {
             id: rule.id.clone(),
             source,
-        })
-}
+        })?;
 
-fn require_pattern(rule: &Rule) -> Result<&String, MatcherError> {
-    rule.pattern
-        .as_ref()
-        .ok_or_else(|| MatcherError::MissingPattern {
+    // `regex` already parsed this pattern with the same syntax, so this
+    // parse can't fail. (`None` means "never matches": useless, harmless.)
+    let min_len = regex_syntax::ParserBuilder::new()
+        .case_insensitive(true)
+        .build()
+        .parse(pattern)
+        .ok()
+        .and_then(|hir| hir.properties().minimum_len());
+    if min_len == Some(0) {
+        return Err(MatcherError::MatchesEmpty {
             id: rule.id.clone(),
-            pattern_type: rule.pattern_type,
-        })
+        });
+    }
+
+    Ok(regex)
 }
 
 #[cfg(test)]
@@ -237,7 +267,7 @@ mod tests {
             category: Category::Jailbreak,
             severity: Severity::High,
             pattern_type: PatternType::Literal,
-            pattern: Some(pattern.to_string()),
+            pattern: pattern.to_string(),
             enabled: true,
             notes: None,
         }
@@ -434,6 +464,39 @@ mod tests {
     #[test]
     fn invalid_regex_pattern_fails_to_build() {
         let result = Matcher::build(&rule_set(vec![regex_rule("bad-regex", "(unclosed")]));
+
+        assert!(matches!(result, Err(MatcherError::InvalidRegex { .. })));
+    }
+
+    #[test]
+    fn patterns_that_match_empty_text_fail_to_build() {
+        // Regression: such a rule fired at every position of every input,
+        // blocking all traffic.
+        let rules = [
+            literal_rule("only-invisible", "\u{200B}\u{200B}"),
+            regex_rule("star", "a*"),
+            regex_rule("optional", "(ignore)?"),
+            regex_rule("boundary", r"\b"),
+            regex_rule("anchor", "^"),
+        ];
+
+        for rule in rules {
+            let id = rule.id.clone();
+            let result = Matcher::build(&rule_set(vec![rule]));
+
+            assert!(
+                matches!(&result, Err(MatcherError::MatchesEmpty { id: got }) if *got == id),
+                "{id}: got {result:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn disabled_rules_are_still_validated() {
+        let mut broken = regex_rule("broken-but-disabled", "(unclosed");
+        broken.enabled = false;
+
+        let result = Matcher::build(&rule_set(vec![broken]));
 
         assert!(matches!(result, Err(MatcherError::InvalidRegex { .. })));
     }

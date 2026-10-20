@@ -2,10 +2,19 @@
 
 use serde::{Deserialize, Serialize};
 
+/// The only `RuleSet::version` this release understands.
+pub const SUPPORTED_VERSION: u32 = 1;
+
 /// Root of the `rules.yaml` file.
+///
+/// Unknown fields are rejected everywhere in the file: in a security
+/// config, a typo like `enabeld: false` or `on_eror: allow` must fail
+/// loudly rather than be silently ignored.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct RuleSet {
-    /// Schema version of this file, for future migrations.
+    /// Schema version of this file, for future migrations. Must equal
+    /// [`SUPPORTED_VERSION`].
     pub version: u32,
     /// Global settings applied to every evaluation using this rule set.
     pub defaults: Defaults,
@@ -15,8 +24,9 @@ pub struct RuleSet {
 
 impl RuleSet {
     /// Parses and semantically validates a `RuleSet` from a YAML string.
-    /// Covers RF2 (the rule set is defined in an external, human-editable
-    /// file, updatable without recompiling the binary).
+    ///
+    /// This checks the file itself; patterns are compiled (and checked
+    /// further) when a [`Detector`](crate::Detector) is built from it.
     pub fn from_yaml_str(yaml: &str) -> Result<Self, crate::ConfigError> {
         let parsed: RuleSet = serde_yaml::from_str(yaml)?;
         parsed.validate()?;
@@ -24,21 +34,34 @@ impl RuleSet {
     }
 
     /// Semantic validation that can't be expressed through serde alone:
-    /// rule ids must be unique, and a `pattern` is required unless
-    /// `pattern_type` is `Heuristic`.
+    /// a supported `version`, a non-zero `max_input_bytes`, and non-empty,
+    /// unique rule ids and non-blank patterns.
     pub fn validate(&self) -> Result<(), crate::ConfigError> {
+        use crate::ConfigError;
+
+        if self.version != SUPPORTED_VERSION {
+            return Err(ConfigError::UnsupportedVersion {
+                found: self.version,
+                supported: SUPPORTED_VERSION,
+            });
+        }
+
+        if self.defaults.max_input_bytes == 0 {
+            // Would truncate every input to nothing: nothing inspected,
+            // everything blocked (or flagged).
+            return Err(ConfigError::ZeroMaxInputBytes);
+        }
+
         let mut seen_ids = std::collections::HashSet::with_capacity(self.rules.len());
-
         for rule in &self.rules {
-            if !seen_ids.insert(rule.id.as_str()) {
-                return Err(crate::ConfigError::DuplicateRuleId(rule.id.clone()));
+            if rule.id.trim().is_empty() {
+                return Err(ConfigError::EmptyRuleId);
             }
-
-            if rule.pattern_type != PatternType::Heuristic && rule.pattern.is_none() {
-                return Err(crate::ConfigError::MissingPattern {
-                    id: rule.id.clone(),
-                    pattern_type: rule.pattern_type,
-                });
+            if !seen_ids.insert(rule.id.as_str()) {
+                return Err(ConfigError::DuplicateRuleId(rule.id.clone()));
+            }
+            if rule.pattern.trim().is_empty() {
+                return Err(ConfigError::BlankPattern(rule.id.clone()));
             }
         }
 
@@ -49,6 +72,7 @@ impl RuleSet {
 /// Global settings for a [`RuleSet`]: mode, blocking threshold, and error
 /// behavior.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct Defaults {
     /// `shadow` logs the real verdict but always returns `Allow` to the
     /// caller; `enforcement` returns the real verdict.
@@ -129,6 +153,7 @@ pub enum OnError {
 
 /// A single rule in the catalog.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct Rule {
     /// Stable identifier, unique across the rule set. Appears in
     /// `MatchDetail` and in log records -- must survive edits to
@@ -141,10 +166,9 @@ pub struct Rule {
     /// How `pattern` is interpreted: literal substring, regex, or a
     /// named built-in heuristic.
     pub pattern_type: PatternType,
-    /// Required if `pattern_type` != `Heuristic` — validated by
-    /// [`RuleSet::validate`].
-    #[serde(default)]
-    pub pattern: Option<String>,
+    /// The literal text, the regular expression, or the heuristic's name,
+    /// depending on `pattern_type`. Required for every rule.
+    pub pattern: String,
     /// Whether this rule participates in matching. Defaults to `true`.
     #[serde(default = "default_enabled")]
     pub enabled: bool,
@@ -257,7 +281,7 @@ rules:
 
         let encoding_rule = &parsed.rules[1];
         assert_eq!(encoding_rule.pattern_type, PatternType::Heuristic);
-        assert_eq!(encoding_rule.pattern.as_deref(), Some("base64_suspicious"));
+        assert_eq!(encoding_rule.pattern, "base64_suspicious");
     }
 
     #[test]
@@ -321,47 +345,122 @@ rules:
         }
     }
 
+    /// A minimal valid file with `extra_defaults` spliced into `defaults`
+    /// and a single rule made of `rule_body` (YAML mapping lines).
+    fn yaml_with(extra_defaults: &str, rule_body: &str) -> String {
+        format!(
+            "version: 1\ndefaults:\n  mode: shadow\n  block_threshold: high\n{extra_defaults}\
+             rules:\n  - id: rule-1\n    category: jailbreak\n    severity: high\n{rule_body}"
+        )
+    }
+
+    const LITERAL_BODY: &str = "    pattern_type: literal\n    pattern: \"foo\"\n";
+
     #[test]
-    fn rejects_non_heuristic_rule_missing_pattern() {
-        let missing_pattern = r#"
-version: 1
-defaults:
-  mode: shadow
-  block_threshold: high
-rules:
-  - id: incomplete-rule
-    category: jailbreak
-    severity: high
-    pattern_type: regex
-"#;
+    fn the_test_template_is_itself_valid() {
+        assert!(RuleSet::from_yaml_str(&yaml_with("", LITERAL_BODY)).is_ok());
+    }
 
-        let result = RuleSet::from_yaml_str(missing_pattern);
+    #[test]
+    fn rejects_a_rule_missing_its_pattern_whatever_its_type() {
+        // Regression: a heuristic rule without a pattern passed validation
+        // but then failed when the Detector was built -- now every rule
+        // needs one, consistently, at parse time.
+        for pattern_type in ["literal", "regex", "heuristic"] {
+            let yaml = yaml_with("", &format!("    pattern_type: {pattern_type}\n"));
 
-        match result {
-            Err(crate::ConfigError::MissingPattern { id, pattern_type }) => {
-                assert_eq!(id, "incomplete-rule");
-                assert_eq!(pattern_type, PatternType::Regex);
-            }
-            other => panic!("expected MissingPattern, got {other:?}"),
+            let result = RuleSet::from_yaml_str(&yaml);
+
+            assert!(
+                matches!(result, Err(crate::ConfigError::Parse(_))),
+                "{pattern_type}: expected a parse error, got {result:?}"
+            );
         }
     }
 
     #[test]
-    fn allows_heuristic_rule_without_pattern() {
-        let heuristic_only = r#"
-version: 1
-defaults:
-  mode: shadow
-  block_threshold: high
-rules:
-  - id: heuristic-rule
-    category: encoding-evasion
-    severity: medium
-    pattern_type: heuristic
-"#;
+    fn rejects_a_blank_pattern() {
+        for blank in ["\"\"", "\"   \""] {
+            let yaml = yaml_with(
+                "",
+                &format!("    pattern_type: literal\n    pattern: {blank}\n"),
+            );
 
-        let result = RuleSet::from_yaml_str(heuristic_only);
+            let result = RuleSet::from_yaml_str(&yaml);
 
-        assert!(result.is_ok());
+            assert!(
+                matches!(&result, Err(crate::ConfigError::BlankPattern(id)) if id == "rule-1"),
+                "pattern {blank}: got {result:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_unknown_fields_at_every_level() {
+        // Regression: typos were silently ignored -- `enabeld: false` left
+        // the rule enabled, `on_eror: allow` left fail-closed in place, and
+        // nobody was told.
+        let typo_in_rule = yaml_with("", &format!("{LITERAL_BODY}    enabeld: false\n"));
+        let typo_in_defaults = yaml_with("  on_eror: allow\n", LITERAL_BODY);
+        let typo_at_root = format!("{}extra_key: 1\n", yaml_with("", LITERAL_BODY));
+
+        for yaml in [typo_in_rule, typo_in_defaults, typo_at_root] {
+            let result = RuleSet::from_yaml_str(&yaml);
+
+            match result {
+                Err(crate::ConfigError::Parse(error)) => {
+                    assert!(error.to_string().contains("unknown field"), "{error}");
+                }
+                other => panic!("expected an unknown-field error, got {other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn rejects_an_unsupported_version() {
+        let yaml = yaml_with("", LITERAL_BODY).replacen("version: 1", "version: 2", 1);
+
+        let result = RuleSet::from_yaml_str(&yaml);
+
+        assert!(matches!(
+            result,
+            Err(crate::ConfigError::UnsupportedVersion {
+                found: 2,
+                supported: SUPPORTED_VERSION
+            })
+        ));
+    }
+
+    #[test]
+    fn rejects_zero_max_input_bytes() {
+        let yaml = yaml_with("  max_input_bytes: 0\n", LITERAL_BODY);
+
+        let result = RuleSet::from_yaml_str(&yaml);
+
+        assert!(matches!(result, Err(crate::ConfigError::ZeroMaxInputBytes)));
+    }
+
+    #[test]
+    fn rejects_an_empty_rule_id() {
+        let yaml = yaml_with("", LITERAL_BODY).replacen("id: rule-1", "id: \"  \"", 1);
+
+        let result = RuleSet::from_yaml_str(&yaml);
+
+        assert!(matches!(result, Err(crate::ConfigError::EmptyRuleId)));
+    }
+
+    #[test]
+    fn oversize_settings_parse_and_default_to_fail_closed() {
+        let defaulted = RuleSet::from_yaml_str(&yaml_with("", LITERAL_BODY)).expect("valid");
+        let explicit = RuleSet::from_yaml_str(&yaml_with(
+            "  max_input_bytes: 1000\n  on_oversize: flag\n",
+            LITERAL_BODY,
+        ))
+        .expect("valid");
+
+        assert_eq!(defaulted.defaults.max_input_bytes, 32_000);
+        assert_eq!(defaulted.defaults.on_oversize, OnOversize::Block);
+        assert_eq!(explicit.defaults.max_input_bytes, 1000);
+        assert_eq!(explicit.defaults.on_oversize, OnOversize::Flag);
     }
 }

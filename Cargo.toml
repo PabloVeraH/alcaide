@@ -17,6 +17,7 @@ description = "Filtro de inyección de prompts en Rust: motor de reglas determin
 alcaide-core = { path = "alcaide-core", version = "0.1.0" }
 aho-corasick = "1"
 regex = "1"
+regex-syntax = "0.8"
 unicode-normalization = "0.1"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"

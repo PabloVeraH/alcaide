@@ -77,22 +77,31 @@ pub enum ConfigError {
     /// line/column).
     #[error("invalid configuration: {0}")]
     Parse(#[from] serde_yaml::Error),
+    /// The file's `version` isn't one this release understands.
+    #[error("unsupported rule set version {found}: this release supports version {supported}")]
+    UnsupportedVersion {
+        /// The version found in the file.
+        found: u32,
+        /// The only version this release supports.
+        supported: u32,
+    },
+    /// `defaults.max_input_bytes` is zero, which would leave nothing to
+    /// inspect.
+    #[error("defaults.max_input_bytes must be greater than zero")]
+    ZeroMaxInputBytes,
+    /// A rule's `id` is empty or whitespace-only.
+    #[error("every rule needs a non-empty id")]
+    EmptyRuleId,
     /// Two or more rules share the same `id`.
     #[error("duplicate rule id '{0}': rule ids must be unique across the rule set")]
     DuplicateRuleId(String),
-    /// A rule's `pattern_type` requires a `pattern`, but none was given.
-    #[error(
-        "rule '{id}': pattern_type is '{pattern_type:?}' but no pattern was provided \
-         (required unless pattern_type is heuristic)"
-    )]
-    MissingPattern {
-        /// The offending rule's id.
-        id: String,
-        /// The offending rule's `pattern_type`.
-        pattern_type: PatternType,
-    },
+    /// A rule's `pattern` is empty or whitespace-only -- it would match
+    /// every input.
+    #[error("rule '{0}': pattern is blank (it would match every input)")]
+    BlankPattern(String),
     /// A rule's pattern is well-formed YAML but fails to compile (e.g.
-    /// invalid regex syntax) or names an unrecognized heuristic.
+    /// invalid regex syntax), names an unrecognized heuristic, or would
+    /// match every input.
     #[error("failed to compile rule set: {0}")]
     Matcher(#[from] MatcherError),
 }
@@ -299,7 +308,7 @@ mod tests {
             category: Category::Jailbreak,
             severity,
             pattern_type: PatternType::Literal,
-            pattern: Some(pattern.to_string()),
+            pattern: pattern.to_string(),
             enabled: true,
             notes: None,
         }

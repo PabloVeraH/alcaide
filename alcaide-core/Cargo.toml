@@ -9,6 +9,7 @@ description = "Alcaide's deterministic rule engine — no network dependencies"
 [dependencies]
 aho-corasick = { workspace = true }
 regex = { workspace = true }
+regex-syntax = { workspace = true }
 unicode-normalization = { workspace = true }
 serde = { workspace = true }
 serde_yaml = { workspace = true }

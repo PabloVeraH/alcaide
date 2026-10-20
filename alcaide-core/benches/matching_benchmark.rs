@@ -15,7 +15,7 @@ fn synthetic_rule_set(count: usize) -> RuleSet {
             category: Category::InjectionGeneric,
             severity: Severity::Medium,
             pattern_type: PatternType::Literal,
-            pattern: Some(format!("synthetic-evasion-pattern-{i}")),
+            pattern: format!("synthetic-evasion-pattern-{i}"),
             enabled: true,
             notes: None,
         })
