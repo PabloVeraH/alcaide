@@ -10,7 +10,7 @@ use pyo3::exceptions::{PyIOError, PyValueError};
 use pyo3::prelude::*;
 use std::path::Path;
 
-#[pyclass(name = "Verdict", eq, eq_int, skip_from_py_object)]
+#[pyclass(name = "Verdict", eq, eq_int)]
 #[derive(Clone, Copy, PartialEq)]
 enum PyVerdict {
     Allow,
@@ -28,7 +28,7 @@ impl From<alcaide_core::Verdict> for PyVerdict {
     }
 }
 
-#[pyclass(name = "Mode", eq, eq_int, skip_from_py_object)]
+#[pyclass(name = "Mode", eq, eq_int)]
 #[derive(Clone, Copy, PartialEq)]
 enum PyMode {
     Shadow,
@@ -44,7 +44,7 @@ impl From<alcaide_core::Mode> for PyMode {
     }
 }
 
-#[pyclass(name = "Category", eq, eq_int, skip_from_py_object)]
+#[pyclass(name = "Category", eq, eq_int)]
 #[derive(Clone, Copy, PartialEq)]
 enum PyCategory {
     Jailbreak,
@@ -66,7 +66,7 @@ impl From<alcaide_core::Category> for PyCategory {
     }
 }
 
-#[pyclass(name = "Severity", eq, eq_int, skip_from_py_object)]
+#[pyclass(name = "Severity", eq, eq_int)]
 #[derive(Clone, Copy, PartialEq, PartialOrd)]
 enum PySeverity {
     Low,
@@ -87,7 +87,7 @@ impl From<alcaide_core::Severity> for PySeverity {
 }
 
 /// One rule that matched, enriched with its category/severity.
-#[pyclass(name = "MatchDetail", get_all, frozen, skip_from_py_object)]
+#[pyclass(name = "MatchDetail", get_all, frozen)]
 #[derive(Clone)]
 struct PyMatchDetail {
     rule_id: String,
