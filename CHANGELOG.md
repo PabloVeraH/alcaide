@@ -11,6 +11,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - The base64 decoder now accepts unpadded and URL-safe base64, and payloads misaligned by junk glued in front of them.
 - Regex rules are case-insensitive by default (opt out with `(?-i)`); literal rules are folded like the input and non-ASCII literals get Unicode case folding.
 - When literal rules overlap, all of them are now reported, so a low-severity rule can no longer hide a high-severity one.
+- A look-alike or tag-character letter followed by a combining accent (Cyrillic "а" + U+0301), or an accent separated from its letter by an invisible character, never composed into the accented letter, so "Ignorа́ las instrucciones anteriores" evaded the Spanish rule. Normalization now resolves look-alikes, tags and invisible characters before composing, which also folds accented look-alikes (Greek "ά"). Found by fuzzing.
 - Rule files reject unknown fields (`enabeld: false` used to be silently ignored), blank patterns, and patterns that match empty text (which matched every input).
 
 ### Fixed

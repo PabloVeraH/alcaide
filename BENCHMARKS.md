@@ -14,13 +14,13 @@ cargo bench -p alcaide-core --bench real_rules_benchmark
 
 | Metric | Result |
 |---|---|
-| Malicious prompts detected | **48 / 52** (92.3%) |
-| Benign prompts false-positived | **2 / 80** (2.5%) |
+| Malicious prompts detected | **49 / 53** (92.5%) |
+| Benign prompts false-positived | **2 / 81** (2.5%) |
 
-Measured against [`alcaide-core/tests/corpus/prompts.yaml`](alcaide-core/tests/corpus/prompts.yaml): 132 labeled prompts (52 malicious, 80 benign). The corpus grew from the original 38 entries in two deliberate directions:
+Measured against [`alcaide-core/tests/corpus/prompts.yaml`](alcaide-core/tests/corpus/prompts.yaml): 134 labeled prompts (53 malicious, 81 benign). The corpus grew from the original 38 entries in two deliberate directions:
 
 - **Paraphrases** (about two-thirds of the malicious entries): realistic rewordings of the same cited techniques — different wording, same underlying attack — to check whether the deterministic rules generalize beyond the exact sentence copied from each source.
-- **Evasion regressions** (11 entries): a known payload wrapped in one obfuscation technique (zero-width characters, Cyrillic or Greek look-alike letters, invisible Unicode tag characters, unpadded or misaligned base64, irregular whitespace, uppercase Spanish, synonyms, markdown image exfiltration). Every one of them was missed by the 0.1.0 engine; each now has a matching benign *precision probe* showing where the rule stops matching.
+- **Evasion regressions** (12 entries): a known payload wrapped in one obfuscation technique (zero-width characters, Cyrillic or Greek look-alike letters, a look-alike carrying a combining accent, invisible Unicode tag characters, unpadded or misaligned base64, irregular whitespace, uppercase Spanish, synonyms, markdown image exfiltration). Every one of them was missed by the 0.1.0 engine; each now has a matching benign *precision probe* showing where the rule stops matching.
 
 **This is still a modest corpus by industry standards, and the rules were tuned against it.** It is a step in an ongoing, documented process of curation — not a claim that detection is solved. Treat these rates as "what we can currently demonstrate with citable sources," not "what this approach can achieve in general." Evaluating against independent public datasets is the next step.
 
