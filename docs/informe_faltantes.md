@@ -2,13 +2,13 @@
 
 Estado sobre `main` en `2a0e61f` (después de #16), más el fuzzing agregado a continuación. Reemplaza al informe anterior, hecho sobre `2294d1c` (v0.1.0), cuyos hallazgos quedaron resueltos en #16 salvo lo que se lista abajo.
 
-Resumen: el motor, la validación de config, la API, el CLI, los bindings, la CI y el fuzzing (`fuzz/`, ver su README) están en buen estado para una primera publicación. Lo débil hoy es **la evidencia de detección** (corpus propio, pocas reglas) y **la ausencia de un camino de release**.
+Resumen: el motor, la validación de config, la API, el CLI, los bindings, la CI y el fuzzing (`fuzz/`, ver su README) están en buen estado para una primera publicación. Lo débil hoy es **el recall** (medido contra datasets públicos: la mayoría de los ataques pasa) y **la ausencia de un camino de release**.
 
 ---
 
 ## 🔴 Detección
 
-1. **Corpus propio y sobreajustado.** 58/62 maliciosos detectados y 3/88 falsos positivos (`BENCHMARKS.md`), pero las reglas se afinaron contra ese mismo corpus de 150 prompts. Falta evaluar contra datasets públicos independientes (deepset/prompt-injections, JailbreakBench, HackAPrompt) con un conjunto de validación separado que no se use para afinar.
+1. **Recall bajo en datos independientes.** En el corpus propio: 58/62 detectados y 3/88 falsos positivos. En los splits de test de tres datasets públicos que no se usaron para escribir reglas: deepset 0/60, Gandalf 40/112 y jailbreak-classification 39/139 detectados, con 0 falsos positivos sobre 1.039 prompts benignos en total (`BENCHMARKS.md`). Las reglas son precisas pero calzan con frases concretas, y la mayoría de los ataques son paráfrasis. Cerca del 40% de deepset está en alemán.
 2. **Cobertura todavía acotada: 18 reglas.** Ya cubren marcadores de rol falsos, tokens de plantilla de chat y *fake completion* (Greshake et al., Zhou et al., Liu et al.). Faltan los encabezados estilo Alpaca (`### Instruction:`) y "new instructions:", para los que no se encontró una fuente citable, y reglas en otros idiomas aparte de inglés y español.
 
 ## 🟠 Evasiones conocidas que siguen pasando
@@ -38,5 +38,4 @@ Ambos documentados en las reglas y en el corpus; se dejaron porque angostar la r
 ## Orden recomendado
 
 1. Workflow de release y primera publicación (crates.io + PyPI).
-2. Evaluación contra un dataset público con split de validación; publicar los números en `BENCHMARKS.md` tal como salgan.
-3. Reglas nuevas guiadas por esa evaluación, cada una con su entrada en el corpus y su probe de precisión.
+2. Reglas nuevas estudiando **solo los splits de train** (p. ej. "forget all previous tasks", "now focus on your new task", inyecciones en alemán), cada una con su fuente, su entrada en el corpus y su probe de precisión; volver a medir los splits de test sin mirarlos caso por caso.

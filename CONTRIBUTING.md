@@ -34,7 +34,7 @@ Rules live in [`alcaide-core/rules/default.yaml`](alcaide-core/rules/default.yam
 
 Matching is case-insensitive and runs on normalized text (whitespace collapsed, invisible characters removed, look-alike letters folded to Latin), so a rule doesn't need to handle those variations itself. `alcaide lint-rules <file>` validates a rule file without evaluating anything.
 
-After changing rules or the corpus, re-run `alcaide bench` and update [BENCHMARKS.md](BENCHMARKS.md) with the new numbers.
+After changing rules or the corpus, re-run `alcaide bench` and update [BENCHMARKS.md](BENCHMARKS.md) with the new numbers, including the public datasets (`python benchmarks/fetch_public.py`). Their train splits may inform a rule; never read their test splits while writing one, or the held-out numbers stop meaning anything.
 
 ## Commits
 

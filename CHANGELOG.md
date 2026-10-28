@@ -30,6 +30,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - Default rules: verb synonyms for instruction overrides (disregard/forget/override, olvidar/omitir/hacer caso omiso) and markdown image exfiltration.
 - Default rules from published attacks: fake role markers (`[system](#additional_instructions)`), impersonated system error messages, chat-template control tokens (`<|im_start|>`, `[INST]`, `<<SYS>>`; medium severity), and fake completions ("Answer: task complete."). Two OWASP smoke-test strings that used to pass are now detected.
 - Property tests for `Detector::evaluate`: it never panics, and every span slices the input.
+- `benchmarks/fetch_public.py` and a held-out measurement against three public datasets (deepset/prompt-injections, Lakera/gandalf_ignore_instructions, jackhhao/jailbreak-classification) in BENCHMARKS.md: 0-36% of attacks detected, no false positive on 1,039 benign prompts.
 - Coverage-guided fuzzing (`fuzz/`, cargo-fuzz) of evaluation, normalization and rule loading, checking invariants rather than only crashes: verdict policy, valid spans, idempotent folding, and that obfuscating text never changes its normalized form. Runs on every engine change and weekly in CI.
 - `SECURITY.md`, `CONTRIBUTING.md`, cargo-deny, Dependabot, and CI on Linux, Windows and macOS, plus the MSRV.
 
