@@ -29,6 +29,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - Python: `Detector.from_yaml_str`, `Detector.with_default_rules`, `rule_count()`, `Decision.input_truncated`, informative `repr`s, type stubs (`py.typed`). `evaluate` releases the GIL. A single abi3 wheel covers CPython 3.9+.
 - Default rules: verb synonyms for instruction overrides (disregard/forget/override, olvidar/omitir/hacer caso omiso) and markdown image exfiltration.
 - Property tests for `Detector::evaluate`: it never panics, and every span slices the input.
+- Coverage-guided fuzzing (`fuzz/`, cargo-fuzz) of evaluation, normalization and rule loading, checking invariants rather than only crashes: verdict policy, valid spans, idempotent folding, and that obfuscating text never changes its normalized form. Runs on every engine change and weekly in CI.
 - `SECURITY.md`, `CONTRIBUTING.md`, cargo-deny, Dependabot, and CI on Linux, Windows and macOS, plus the MSRV.
 
 ### Changed

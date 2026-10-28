@@ -20,6 +20,8 @@ pip install maturin pytest && pip install .
 pytest tests/
 ```
 
+Changes to normalization, matching or rule loading should also survive a few minutes of fuzzing (nightly, Linux/macOS): see [fuzz/README.md](fuzz/README.md).
+
 Every behavior change comes with a test that fails without it. For an evasion or a false positive, that means a regression test next to the code, and an entry in the labeled corpus below.
 
 ## Contributing rules

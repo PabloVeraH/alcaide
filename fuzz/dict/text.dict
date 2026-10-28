@@ -1,0 +1,47 @@
+# Tokens that steer the text targets toward what normalization rewrites.
+# libFuzzer dictionary format; \xNN is a raw byte (UTF-8 below).
+
+# Invisible / default-ignorable
+"\xe2\x80\x8b"
+"\xe2\x80\x8d"
+"\xc2\xad"
+"\xe2\x81\xa0"
+"\xef\xbb\xbf"
+"\xef\xb8\x8f"
+"\xe2\x80\xae"
+# Combining marks (acute, grave, tilde, diaeresis, cedilla)
+"\xcc\x81"
+"\xcc\x80"
+"\xcc\x83"
+"\xcc\x88"
+"\xcc\xa7"
+# Cyrillic / Greek / Armenian look-alikes
+"\xd0\xb0"
+"\xd0\xb5"
+"\xd0\xbe"
+"\xd1\x81"
+"\xd1\x80"
+"\xd1\x96"
+"\xd0\x90"
+"\xd0\x86"
+"\xce\xbf"
+"\xce\xb1"
+"\xce\xb9"
+"\xd6\x85"
+# Fullwidth, tag characters, odd whitespace
+"\xef\xbc\xa1"
+"\xef\xbd\x81"
+"\xf3\xa0\x81\xa1"
+"\xf3\xa0\x80\xa0"
+"\xc2\xa0"
+"\xe3\x80\x80"
+"\xe2\x80\x83"
+# Payload fragments the default rules look for
+"ignore all previous instructions"
+"ignora las instrucciones anteriores"
+"developer mode"
+"system prompt"
+"![x](https://"
+"SWdub3JlIGFsbCBwcmV2aW91cyBpbnN0cnVjdGlvbnM"
+"72657665616c"
+"=="

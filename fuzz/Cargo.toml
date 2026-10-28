@@ -1,0 +1,50 @@
+[package]
+name = "alcaide-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+description = "Coverage-guided fuzz targets for alcaide-core (cargo-fuzz, nightly)"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+alcaide-core = { path = "../alcaide-core" }
+arbitrary = { version = "1", features = ["derive"] }
+libfuzzer-sys = "0.4"
+
+# Not part of the main workspace: cargo-fuzz needs nightly, and the
+# workspace builds on stable.
+[workspace]
+members = ["."]
+
+[profile.release]
+debug = 1
+
+[[bin]]
+name = "evaluate"
+path = "fuzz_targets/evaluate.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "normalize"
+path = "fuzz_targets/normalize.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "rules_yaml"
+path = "fuzz_targets/rules_yaml.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "rule_patterns"
+path = "fuzz_targets/rule_patterns.rs"
+test = false
+doc = false
+bench = false
