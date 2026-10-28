@@ -11,6 +11,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - The base64 decoder now accepts unpadded and URL-safe base64, and payloads misaligned by junk glued in front of them.
 - Regex rules are case-insensitive by default (opt out with `(?-i)`); literal rules are folded like the input and non-ASCII literals get Unicode case folding.
 - When literal rules overlap, all of them are now reported, so a low-severity rule can no longer hide a high-severity one.
+- A look-alike or tag-character letter followed by a combining accent (Cyrillic "а" + U+0301), or an accent separated from its letter by an invisible character, never composed into the accented letter, so "Ignorа́ las instrucciones anteriores" evaded the Spanish rule. Normalization now resolves look-alikes, tags and invisible characters before composing, which also folds accented look-alikes (Greek "ά"). Found by fuzzing.
 - Rule files reject unknown fields (`enabeld: false` used to be silently ignored), blank patterns, and patterns that match empty text (which matched every input).
 
 ### Fixed
@@ -27,11 +28,16 @@ All notable changes to this project are documented here. The format follows [Kee
 - CLI: `--rules` is optional everywhere (defaults to the built-in rules); `check` reads standard input or `--file`, and shows the matched text; `bench --min-detection / --max-false-positive` gates (exit 1 on failure); `--version`.
 - Python: `Detector.from_yaml_str`, `Detector.with_default_rules`, `rule_count()`, `Decision.input_truncated`, informative `repr`s, type stubs (`py.typed`). `evaluate` releases the GIL. A single abi3 wheel covers CPython 3.9+.
 - Default rules: verb synonyms for instruction overrides (disregard/forget/override, olvidar/omitir/hacer caso omiso) and markdown image exfiltration.
+- Default rules from published attacks: fake role markers (`[system](#additional_instructions)`), impersonated system error messages, chat-template control tokens (`<|im_start|>`, `[INST]`, `<<SYS>>`; medium severity), and fake completions ("Answer: task complete."). Two OWASP smoke-test strings that used to pass are now detected.
 - Property tests for `Detector::evaluate`: it never panics, and every span slices the input.
+- `benchmarks/fetch_public.py` and a held-out measurement against three public datasets (deepset/prompt-injections, Lakera/gandalf_ignore_instructions, jackhhao/jailbreak-classification) in BENCHMARKS.md: 0-36% of attacks detected, no false positive on 1,039 benign prompts.
+- Default rules written from the public datasets' train splits: German instruction overrides, "new task" announcements (medium), prompt-dump requests, content-policy bypass and "any kind of content" jailbreak claims, "stay in character" (medium); the English override rule now covers "your instructions", prompts/rules/commands/orders, "everything you've been told" and the DAN opener. Held-out test splits: deepset 0 -> 7/60, Gandalf 40 -> 63/112, jailbreak-classification 39 -> 74/139 detected, still no false positive.
+- Coverage-guided fuzzing (`fuzz/`, cargo-fuzz) of evaluation, normalization and rule loading, checking invariants rather than only crashes: verdict policy, valid spans, idempotent folding, and that obfuscating text never changes its normalized form. Runs on every engine change and weekly in CI.
 - `SECURITY.md`, `CONTRIBUTING.md`, cargo-deny, Dependabot, and CI on Linux, Windows and macOS, plus the MSRV.
 
 ### Changed
 
+- Default rules write word boundaries as ASCII `(?-u:\b)`: a Unicode `\b` made the regex engine leave its DFA on non-ASCII text, 10x slower at p99 on long prompts.
 - `MatchDetail::span` is now a byte range of the caller's original input. It used to point into internal normalized text. In Python, `MatchDetail.span` is in characters, so `text[start:end]` works.
 - `Decision`, `MatchDetail` and `ConfigError` are `#[non_exhaustive]`.
 - CLI: `bench` takes the rule set as `--rules` (optional) instead of a positional argument; `--corpus` is unchanged. It now warms up before measuring, so its latency percentiles reflect steady state.

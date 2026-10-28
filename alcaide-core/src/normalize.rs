@@ -3,13 +3,16 @@
 //!
 //! Character-level stages, applied in order to every character:
 //!
-//! 1. Unicode NFKC (fullwidth letters, ligatures, compatibility forms).
+//! 1. Unicode NFKD: compatibility forms (fullwidth letters, ligatures) and
+//!    accented letters are decomposed.
 //! 2. Unicode tag characters (U+E0020..U+E007E, "ASCII smuggling") are
 //!    revealed as the ASCII text they hide.
 //! 3. Other default-ignorable code points (zero-width spaces, soft
 //!    hyphens, bidi controls, variation selectors...) are dropped.
-//! 4. Every run of whitespace collapses into a single ASCII space.
-//! 5. Latin look-alikes from Cyrillic, Greek and IPA fold to Latin.
+//! 4. Latin look-alikes from Cyrillic, Greek and IPA fold to Latin.
+//! 5. Unicode NFKC recomposes, so the result is in NFKC whatever the
+//!    previous stages revealed or folded.
+//! 6. Every run of whitespace collapses into a single ASCII space.
 //!
 //! Then base64/hex blobs are decoded and appended (not substituted), so
 //! rules see both the encoded and the decoded form.
@@ -167,7 +170,6 @@ pub(crate) fn fold_text(input: &str) -> String {
 /// granularity at which offsets are tracked.
 fn fold(input: &str, mut offsets: Option<&mut OffsetMap>) -> String {
     let mut out = String::with_capacity(input.len());
-    let mut nfkc = String::new();
     let mut last_was_space = false;
     let mut start = 0;
 
@@ -188,14 +190,10 @@ fn fold(input: &str, mut offsets: Option<&mut OffsetMap>) -> String {
         let out_start = out.len();
 
         if let [byte] = original.as_bytes() {
-            // ASCII whitespace: NFKC is the identity on ASCII.
+            // ASCII whitespace: every other stage is the identity on ASCII.
             push_folded(char::from(*byte), &mut out, &mut last_was_space);
         } else {
-            nfkc.clear();
-            nfkc.extend(original.nfkc());
-            for c in nfkc.chars() {
-                push_folded(c, &mut out, &mut last_was_space);
-            }
+            fold_unit(original, &mut out, &mut last_was_space);
         }
 
         if let Some(offsets) = offsets.as_deref_mut() {
@@ -227,29 +225,56 @@ fn ascii_run_end(input: &str, start: usize) -> usize {
 }
 
 /// End of the "unit" starting at `start`: one character plus any combining
-/// marks (non-zero canonical combining class) that follow it.
+/// marks (non-zero canonical combining class) that follow it, including
+/// dropped invisible characters *between* them -- "o" + U+200B + U+0301
+/// must still compose into "ó". Invisible characters after the last mark
+/// stay out of the unit, so spans can exclude them.
 ///
 /// ponytail: Hangul conjoining jamo are all "starters", so a decomposed
 /// jamo sequence is NFKC'd one jamo at a time and stays decomposed. It's
 /// only reachable with deliberately decomposed Korean; precomposed
 /// syllables (the normal form) are unaffected.
 fn unit_end(input: &str, start: usize) -> usize {
-    let mut chars = input[start..].char_indices();
-    chars.next(); // the unit's first character, whatever it is
-    chars
+    let rest = &input[start..];
+    // The unit's first character, whatever it is.
+    let mut end = rest.chars().next().map_or(0, char::len_utf8);
+    for (i, c) in rest.char_indices().skip(1) {
         // ASCII is never a combining mark; skip the table lookup.
-        .find(|&(_, c)| c.is_ascii() || canonical_combining_class(c) == 0)
-        .map_or(input.len(), |(i, _)| start + i)
+        if c.is_ascii() {
+            break;
+        }
+        if is_dropped(c) {
+            continue; // part of the unit only if a mark follows
+        }
+        if canonical_combining_class(c) == 0 {
+            break;
+        }
+        end = i + c.len_utf8();
+    }
+    start + end
 }
 
-/// Stages 2-5 for one (already NFKC'd) character.
-fn push_folded(c: char, out: &mut String, last_was_space: &mut bool) {
-    let c = match reveal_tag(c) {
-        Some(ascii) => ascii,
-        None if is_default_ignorable(c) => return,
-        None => c,
-    };
+/// Every character-level stage for one non-ASCII unit.
+///
+/// Tags, invisible characters and look-alikes are resolved on the
+/// *decomposed* unit, and only then composed (NFKC). Resolving them after
+/// composing would leave a look-alike or tag-character base next to an
+/// accent it never composed with: Cyrillic "а" + U+0301 would fold to
+/// "a" + U+0301, not the "á" a rule pattern is written with, and the
+/// look-alike table would miss every accented form (Greek "ά").
+fn fold_unit(unit: &str, out: &mut String, last_was_space: &mut bool) {
+    let resolved = unit.nfkd().filter_map(|c| match reveal_tag(c) {
+        Some(ascii) => Some(ascii),
+        None if is_default_ignorable(c) => None,
+        None => Some(latin_lookalike(c).unwrap_or(c)),
+    });
+    for c in resolved.nfkc() {
+        push_folded(c, out, last_was_space);
+    }
+}
 
+/// Whitespace collapsing for one fully folded character.
+fn push_folded(c: char, out: &mut String, last_was_space: &mut bool) {
     if c.is_whitespace() {
         if !*last_was_space {
             out.push(' ');
@@ -259,7 +284,12 @@ fn push_folded(c: char, out: &mut String, last_was_space: &mut bool) {
     }
 
     *last_was_space = false;
-    out.push(latin_lookalike(c).unwrap_or(c));
+    out.push(c);
+}
+
+/// A character the folding drops entirely (rather than reveals).
+fn is_dropped(c: char) -> bool {
+    reveal_tag(c).is_none() && is_default_ignorable(c)
 }
 
 /// Unicode tag characters mirror printable ASCII at U+E0020..U+E007E and
@@ -593,9 +623,7 @@ mod tests {
         let (mut out, mut last_was_space, mut start) = (String::new(), false, 0);
         while start < input.len() {
             let end = unit_end(input, start);
-            for c in input[start..end].nfkc() {
-                push_folded(c, &mut out, &mut last_was_space);
-            }
+            fold_unit(&input[start..end], &mut out, &mut last_was_space);
             start = end;
         }
         out
@@ -604,7 +632,7 @@ mod tests {
     proptest::proptest! {
         #[test]
         fn the_ascii_fast_path_folds_exactly_like_unit_by_unit(
-            input in "[a-zA-Z .\t\n\u{0301}\u{0308}\u{00E9}\u{0430}\u{200B}\u{FF21}\u{E0041}]{0,40}"
+            input in "[a-zA-Z .\t\n\u{0301}\u{0308}\u{00E9}\u{0430}\u{03AC}\u{200B}\u{FF21}\u{E0041}]{0,40}"
         ) {
             proptest::prop_assert_eq!(fold(&input, None), fold_unit_by_unit(&input));
         }
@@ -618,6 +646,23 @@ mod tests {
             ("e\u{0301}", "é"),
             ("cafe\u{0301} ok", "café ok"),
             ("ab\u{0301}\u{0301}c", "ab\u{0301}\u{0301}c"), // no precomposed form
+        ] {
+            assert_eq!(normalize(input).normalized_text, expected, "{input:?}");
+        }
+    }
+
+    #[test]
+    fn a_folded_base_composes_with_its_accent() {
+        // Found by fuzzing (fuzz/fuzz_targets/normalize.rs): a look-alike or
+        // tag-character base, or an accent separated from its letter by an
+        // invisible character, used to stay decomposed. "Ignorа́" (Cyrillic
+        // а + U+0301) then evaded the Spanish rule's "ignorá".
+        for (input, expected) in [
+            ("ignor\u{0430}\u{0301}", "ignorá"),
+            ("ignor\u{03AC}", "ignorá"), // Greek ά, precomposed
+            ("instrucci\u{043E}\u{0301}n", "instrucción"),
+            ("instruccio\u{200B}\u{0301}n", "instrucción"),
+            ("4 \u{E0041}\u{0300}", "4 À"),
         ] {
             assert_eq!(normalize(input).normalized_text, expected, "{input:?}");
         }
