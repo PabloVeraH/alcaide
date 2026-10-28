@@ -40,7 +40,10 @@ pub fn build_log_record<'a>(
     rule_set_version: u32,
     log_raw_input: bool,
 ) -> LogRecord<'a> {
-    let input_hash: String = Sha256::digest(input.as_bytes()).iter().map(|b| format!("{b:02x}")).collect();
+    let input_hash: String = Sha256::digest(input.as_bytes())
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
     let input_snippet = log_raw_input.then_some(input);
 
     LogRecord {
