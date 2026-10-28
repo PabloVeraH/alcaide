@@ -8,8 +8,8 @@ Resumen: el motor, la validación de config, la API, el CLI, los bindings, la CI
 
 ## 🔴 Detección
 
-1. **Recall bajo en datos independientes.** En el corpus propio: 58/62 detectados y 3/88 falsos positivos. En los splits de test de tres datasets públicos que no se usaron para escribir reglas: deepset 0/60, Gandalf 40/112 y jailbreak-classification 39/139 detectados, con 0 falsos positivos sobre 1.039 prompts benignos en total (`BENCHMARKS.md`). Las reglas son precisas pero calzan con frases concretas, y la mayoría de los ataques son paráfrasis. Cerca del 40% de deepset está en alemán.
-2. **Cobertura todavía acotada: 18 reglas.** Ya cubren marcadores de rol falsos, tokens de plantilla de chat y *fake completion* (Greshake et al., Zhou et al., Liu et al.). Faltan los encabezados estilo Alpaca (`### Instruction:`) y "new instructions:", para los que no se encontró una fuente citable, y reglas en otros idiomas aparte de inglés y español.
+1. **Recall limitado en datos independientes.** En el corpus propio: 68/72 detectados y 4/96 falsos positivos. En los splits de test de tres datasets públicos (nunca leídos para escribir reglas): deepset 7/60, Gandalf 63/112 y jailbreak-classification 74/139 detectados, con 0 falsos positivos sobre 1.039 prompts benignos (`BENCHMARKS.md`). Las reglas escritas desde los splits de train subieron esos números desde 0, 40 y 39. Lo que sigue pasando son paráfrasis, plantillas de role-play y cambios de tema que solo son inyección en el contexto de la aplicación.
+2. **Cobertura todavía acotada: 24 reglas.** Ya cubren marcadores de rol falsos, tokens de plantilla de chat y *fake completion* (Greshake et al., Zhou et al., Liu et al.). Ahora también cubren inglés, español y alemán. Faltan los encabezados estilo Alpaca (`### Instruction:`), para los que no se encontró una fuente citable, y otros idiomas.
 
 ## 🟠 Evasiones conocidas que siguen pasando
 
@@ -38,4 +38,4 @@ Ambos documentados en las reglas y en el corpus; se dejaron porque angostar la r
 ## Orden recomendado
 
 1. Workflow de release y primera publicación (crates.io + PyPI).
-2. Reglas nuevas estudiando **solo los splits de train** (p. ej. "forget all previous tasks", "now focus on your new task", inyecciones en alemán), cada una con su fuente, su entrada en el corpus y su probe de precisión; volver a medir los splits de test sin mirarlos caso por caso.
+2. Ampliar la medición con otro dataset independiente (los splits de test actuales ya se usaron una vez para medir el progreso), y seguir escribiendo reglas solo desde splits de train.
