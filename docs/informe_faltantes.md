@@ -8,8 +8,8 @@ Resumen: el motor, la validación de config, la API, el CLI, los bindings, la CI
 
 ## 🔴 Detección
 
-1. **Corpus propio y sobreajustado.** 49/53 maliciosos detectados y 2/81 falsos positivos (`BENCHMARKS.md`), pero las reglas se afinaron contra ese mismo corpus de 134 prompts. Falta evaluar contra datasets públicos independientes (deepset/prompt-injections, JailbreakBench, HackAPrompt) con un conjunto de validación separado que no se use para afinar.
-2. **Cobertura baja: 14 reglas.** No hay reglas para tokens de rol / delimitadores de plantilla (`<|im_start|>`, `system:`, `### Instruction`, `[INST]`) ni para "new instructions:". Solo hay reglas de idioma para inglés y español.
+1. **Corpus propio y sobreajustado.** 58/62 maliciosos detectados y 3/88 falsos positivos (`BENCHMARKS.md`), pero las reglas se afinaron contra ese mismo corpus de 150 prompts. Falta evaluar contra datasets públicos independientes (deepset/prompt-injections, JailbreakBench, HackAPrompt) con un conjunto de validación separado que no se use para afinar.
+2. **Cobertura todavía acotada: 18 reglas.** Ya cubren marcadores de rol falsos, tokens de plantilla de chat y *fake completion* (Greshake et al., Zhou et al., Liu et al.). Faltan los encabezados estilo Alpaca (`### Instruction:`) y "new instructions:", para los que no se encontró una fuente citable, y reglas en otros idiomas aparte de inglés y español.
 
 ## 🟠 Evasiones conocidas que siguen pasando
 
@@ -39,4 +39,4 @@ Ambos documentados en las reglas y en el corpus; se dejaron porque angostar la r
 
 1. Workflow de release y primera publicación (crates.io + PyPI).
 2. Evaluación contra un dataset público con split de validación; publicar los números en `BENCHMARKS.md` tal como salgan.
-3. Reglas nuevas guiadas por esa evaluación (empezando por tokens de rol), cada una con su entrada en el corpus y su probe de precisión.
+3. Reglas nuevas guiadas por esa evaluación, cada una con su entrada en el corpus y su probe de precisión.
