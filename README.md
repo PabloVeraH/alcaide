@@ -113,7 +113,7 @@ See [`alcaide-py/README.md`](alcaide-py/README.md).
 
 ### Privacy
 
-Nothing is sent over the network. Every call to `evaluate` also emits one structured JSON log line via [`tracing`](https://docs.rs/tracing) (target `alcaide::decision`) containing a SHA-256 hash of the input, never the raw text, unless `log_raw_input: true` is explicitly set in `defaults`.
+Nothing is sent over the network. Every call to `evaluate` also emits one structured event via [`tracing`](https://docs.rs/tracing) (target `alcaide::decision`, one field per entry, so a JSON subscriber writes real JSON fields) containing a SHA-256 hash of the input, never the raw text, unless `log_raw_input: true` is explicitly set in `defaults`.
 
 ## Contributing and security
 

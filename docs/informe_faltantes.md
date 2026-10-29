@@ -12,6 +12,8 @@ Resumen: el motor, la validación de config, la API, la CLI, los bindings, la CI
 - **Python en enforcement:** `Detector.with_default_rules(mode=Mode.Enforcement)`.
 - **Reglas componibles:** `extends: default` y `disable: [ids]` en el YAML. Funciona en Rust, en la CLI y en Python.
 - **Workflow de release** (`release.yml`): wheels abi3 para 5 plataformas, sdist, crates.io y PyPI. Falta configurar las credenciales y hacer la primera publicación (ver "Publicación").
+- **Log estructurado:** el registro de cada decisión es un evento de `tracing` con un campo por dato, no un JSON dentro del mensaje.
+- **CI de Python** también en Windows y macOS.
 
 ## 🔴 Detección
 
@@ -91,11 +93,9 @@ Los cuatro están documentados en las reglas y en el corpus. Se dejaron porque a
 
 ## ⚪ Ingeniería menor
 
-- **El log va como JSON dentro del mensaje** (`info!("{json}")`), no como campos de `tracing`. Con un subscriber JSON, el registro queda doblemente codificado.
 - **CI:**
-  - los tests de Python corren solo en Linux;
   - no hay medición de cobertura;
-  - conviene sumar `cargo-semver-checks` antes de la 1.0.
+  - `cargo-semver-checks` necesita una versión publicada para comparar: agregarlo después de la primera publicación, antes de la 1.0.
 - **`RegexSet` como prefiltro:** conviene cuando haya cientos de reglas; con 24 no se justifica.
 
 ---

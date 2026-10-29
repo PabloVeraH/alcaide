@@ -1,4 +1,5 @@
-//! Structured JSON log record emitted per evaluation.
+//! Structured log record emitted per evaluation, as the fields of one
+//! `tracing` event: a JSON subscriber writes them as JSON fields.
 //!
 //! Privacy-first by construction: the raw input is hashed (SHA-256) by
 //! default and never logged verbatim unless `log_raw_input` is explicitly
@@ -31,6 +32,39 @@ pub struct LogRecord<'a> {
     /// guarantee -- do not change this default without a deliberate,
     /// reviewed decision.
     pub input_snippet: Option<&'a str>,
+}
+
+impl LogRecord<'_> {
+    /// Emits the record as one `tracing` event (target
+    /// `alcaide::decision`) with a field per entry. `input_snippet` is left
+    /// out when `None`.
+    pub fn emit(&self) {
+        // A list can't be a `tracing` field: `matched_rules` is the one
+        // field carried as JSON text.
+        let matched_rules = serde_json::to_string(self.matched_rules).unwrap_or_default();
+        tracing::info!(
+            target: "alcaide::decision",
+            request_id = self.request_id,
+            mode = variant_name(&self.mode),
+            verdict = variant_name(&self.verdict),
+            matched_rules,
+            latency_us = u64::try_from(self.latency_us).unwrap_or(u64::MAX),
+            input_truncated = self.input_truncated,
+            rule_set_version = self.rule_set_version,
+            input_hash = self.input_hash.as_str(),
+            input_snippet = self.input_snippet,
+            "prompt evaluated"
+        );
+    }
+}
+
+/// The serialized name of a unit enum variant (`"block"`), so log fields
+/// spell it exactly as the JSON `Decision` does.
+fn variant_name(value: &impl Serialize) -> String {
+    match serde_json::to_value(value) {
+        Ok(serde_json::Value::String(name)) => name,
+        _ => String::new(),
+    }
 }
 
 pub fn build_log_record<'a>(

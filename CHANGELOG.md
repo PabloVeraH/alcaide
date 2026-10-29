@@ -39,6 +39,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- The decision log record is one `tracing` event with a field per entry (message `prompt evaluated`) instead of a JSON string inside the message, which a JSON subscriber encoded twice. `matched_rules` stays JSON text, since a list can't be a `tracing` field, and `input_snippet` is omitted rather than null when not logged.
 - `max_input_bytes` defaults to 1,000,000 instead of 32,000. A retrieved document longer than 32 KB was blocked unread by default, and with `on_oversize: flag` a payload appended to it went undetected; a whole 1 MB document is now inspected in 20-43 ms.
 - Default rules write word boundaries as ASCII `(?-u:\b)`: a Unicode `\b` made the regex engine leave its DFA on non-ASCII text, 10x slower at p99 on long prompts.
 - `MatchDetail::span` is now a byte range of the caller's original input. It used to point into internal normalized text. In Python, `MatchDetail.span` is in characters, so `text[start:end]` works.

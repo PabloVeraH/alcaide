@@ -266,27 +266,21 @@ impl Detector {
     /// See `logging::build_log_record` for the privacy guarantee (raw
     /// input hashed, never logged verbatim by default).
     fn log_decision(&self, decision: &Decision, input: &str, request_id: Option<&str>) {
-        // Hashing the input and serializing the record are the costliest
+        // Hashing the input and building the record are the costliest
         // part of an evaluation of short input: skip them when no
         // subscriber would receive the event.
         if !tracing::enabled!(target: "alcaide::decision", tracing::Level::INFO) {
             return;
         }
 
-        let record = logging::build_log_record(
+        logging::build_log_record(
             decision,
             input,
             request_id,
             self.rules.version,
             self.rules.defaults.log_raw_input,
-        );
-
-        match serde_json::to_string(&record) {
-            Ok(json) => tracing::info!(target: "alcaide::decision", "{json}"),
-            Err(error) => {
-                tracing::error!(target: "alcaide::decision", %error, "failed to serialize decision log record")
-            }
-        }
+        )
+        .emit();
     }
 
     /// Builds the `Decision`, applying the mode on every path: in shadow
