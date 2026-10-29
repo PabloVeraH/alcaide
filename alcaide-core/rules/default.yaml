@@ -411,6 +411,46 @@ rules:
       OWASP's own literal example: base64("Ignore all previous
       instructions") = "SWdub3JlIGFsbCBwcmV2aW91cyBpbnN0cnVjdGlvbnM=".
 
+  - id: encoding-invisible-text
+    category: encoding-evasion
+    severity: medium
+    pattern_type: heuristic
+    pattern: invisible_text
+    enabled: true
+    notes: >
+      Fires on text a reader can't see: an invisible character inside a
+      word ("ign<U+200B>ore"), a bidi embedding/override/isolate control,
+      or Unicode tag characters outside an emoji flag ("ASCII smuggling").
+      Normalization already removes or reveals these, so a hidden payload
+      that matches a rule is caught anyway; this rule flags the hiding
+      itself, when the hidden text matches nothing. Sources: Boucher et
+      al., "Bad Characters: Imperceptible NLP Attacks" (IEEE S&P 2022,
+      arXiv:2106.09898); Boucher & Anderson, "Trojan Source" (USENIX
+      Security 2023, arXiv:2111.00169); ASCII smuggling with tag
+      characters, publicly documented by Riley Goodside (Jan 2024).
+      Medium: legitimate text rarely does this, but it isn't intent.
+      Left out on purpose: soft hyphens (web hyphenation), zero-width
+      joiners outside Latin words (emoji sequences, Persian), and
+      left-to-right/right-to-left marks (common in mixed-direction text).
+
+  - id: encoding-mixed-script
+    category: encoding-evasion
+    severity: medium
+    pattern_type: heuristic
+    pattern: mixed_script
+    enabled: true
+    notes: >
+      Fires on a word that mixes Latin letters with Cyrillic, Greek or
+      Armenian look-alikes ("Ign<Cyrillic o>re"): the homoglyph evasion
+      normalization folds back to Latin. Like encoding-invisible-text, it
+      flags the disguise when the disguised word matches no rule. Mixed-
+      script detection is the mechanism Unicode recommends against
+      spoofing (Unicode Technical Standard #39, Unicode Security
+      Mechanisms, section 5); homoglyph attacks on NLP models in Boucher
+      et al. (arXiv:2106.09898). Words entirely in one script (Russian,
+      Greek) never fire, nor do scripts joined by a hyphen
+      ("Wi-Fi-роутер").
+
 # Known, acknowledged gap for this rule set: character
 # scrambling / typoglycemia evasion (e.g. "ignroe all prevoius systme
 # instructions", documented in the same OWASP cheat sheet cited above) is
