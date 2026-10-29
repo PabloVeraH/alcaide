@@ -71,13 +71,18 @@ jobs:
       - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
 
   python:
-    name: Python bindings (${{ matrix.python }})
-    runs-on: ubuntu-latest
+    name: Python bindings (${{ matrix.os }}, ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        # Both ends of the abi3 wheel's supported range.
-        python: ["3.9", "3.13"]
+        # Both ends of the abi3 wheel's supported range, and the newest
+        # Python on every platform a wheel is released for.
+        include:
+          - { os: ubuntu-latest, python: "3.9" }
+          - { os: ubuntu-latest, python: "3.13" }
+          - { os: windows-latest, python: "3.13" }
+          - { os: macos-latest, python: "3.13" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
@@ -89,8 +94,6 @@ jobs:
       - name: Install and test alcaide-py
         working-directory: alcaide-py
         run: |
-          python -m venv .venv
-          source .venv/bin/activate
-          pip install maturin pytest
+          pip install pytest
           pip install .
           pytest tests/ -v
