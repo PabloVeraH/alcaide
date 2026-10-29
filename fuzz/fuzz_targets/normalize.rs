@@ -6,7 +6,8 @@
 //!   they only agree if folding a folded text changes nothing);
 //! - obfuscating ASCII text with the tricks normalization exists to undo
 //!   (invisible characters, look-alike letters, fullwidth forms, tag
-//!   characters, odd whitespace) yields exactly the same normalized text.
+//!   characters, odd whitespace) yields exactly the same normalized text,
+//!   deobfuscated copy included.
 
 #![no_main]
 
@@ -27,7 +28,10 @@ const INVISIBLE: [char; 6] = [
     '\u{200B}', '\u{200D}', '\u{00AD}', '\u{2060}', '\u{FEFF}', '\u{FE0F}',
 ];
 
-/// Whitespace that must collapse into one ASCII space.
+/// Whitespace that must read as an ASCII space. Each one replaces exactly
+/// one whitespace character: how many there were is meaningful (a wider
+/// gap separates words between spaced-out letters, "i g n o r e   a l l").
+/// Collapsing is covered by the unit tests and the evaluate target.
 const SPACES: [char; 6] = [' ', '\t', '\n', '\u{00A0}', '\u{2003}', '\u{3000}'];
 
 /// Non-Latin letters that normalization must read as `c`.
@@ -100,11 +104,7 @@ fn obfuscate(text: &str, ops: &[u8]) -> String {
             4 if (' '..='~').contains(&c) => {
                 out.push(char::from_u32(u32::from(c) + 0xE0000).expect("valid"));
             }
-            5 if c.is_whitespace() => {
-                for j in 0..=pick % 3 {
-                    out.push(SPACES[(pick + j) % SPACES.len()]);
-                }
-            }
+            5 if c.is_whitespace() => out.push(SPACES[pick % SPACES.len()]),
             _ => out.push(c),
         }
     }

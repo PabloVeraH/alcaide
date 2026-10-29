@@ -4,7 +4,7 @@ A deterministic, auditable prompt-injection firewall written in Rust — inspect
 
 ## Status
 
-Pre-1.0, but functionally complete for the core use case: config loading, normalization (Unicode NFKC, invisible-character removal, homoglyph folding, whitespace collapsing, base64/hex decoding), pattern matching (literal + regex + heuristic rules), scoring, shadow/enforcement modes, structured JSON logging, a curated default rule set with cited sources, a CLI (`alcaide check` / `lint-rules` / `bench`), and Python bindings (`pip install .` in `alcaide-py/`) all work end to end. Not yet published to crates.io or PyPI. See [`BENCHMARKS.md`](BENCHMARKS.md) for real, measured detection/false-positive rates and latency against the curated rule set.
+Pre-1.0, but functionally complete for the core use case: config loading, normalization (Unicode NFKC, invisible-character removal, homoglyph folding, whitespace collapsing, base64/hex decoding, a deobfuscated copy that undoes escapes, emoji inside words and spaced-out letters), pattern matching (literal + regex + heuristic rules), scoring, shadow/enforcement modes, structured JSON logging, a curated default rule set with cited sources, a CLI (`alcaide check` / `lint-rules` / `bench`), and Python bindings (`pip install .` in `alcaide-py/`) all work end to end. Not yet published to crates.io or PyPI. See [`BENCHMARKS.md`](BENCHMARKS.md) for real, measured detection/false-positive rates and latency against the curated rule set.
 
 ## Usage
 
