@@ -28,7 +28,7 @@ impl From<alcaide_core::Verdict> for PyVerdict {
     }
 }
 
-#[pyclass(name = "Mode", eq, eq_int)]
+#[pyclass(name = "Mode", eq, eq_int, from_py_object)]
 #[derive(Clone, Copy, PartialEq)]
 enum PyMode {
     Shadow,
@@ -196,11 +196,17 @@ impl PyDetector {
             .map_err(to_py_error)
     }
 
-    /// The curated default rule set bundled with the package, as shipped:
-    /// in shadow mode (reports what it would block, always allows).
+    /// The curated default rule set bundled with the package. It ships in
+    /// shadow mode (reports what it would block, always allows); pass
+    /// `mode=Mode.Enforcement` to block.
     #[staticmethod]
-    fn with_default_rules() -> Self {
-        Self(alcaide_core::Detector::with_default_rules())
+    #[pyo3(signature = (mode=None))]
+    fn with_default_rules(mode: Option<PyMode>) -> Self {
+        let mut rules = alcaide_core::Detector::with_default_rules().rules().clone();
+        if let Some(mode) = mode {
+            rules.defaults.mode = mode.into();
+        }
+        Self(alcaide_core::Detector::new(rules).expect("the default rule set is valid"))
     }
 
     /// Total number of rules in the loaded rule set, enabled or not.

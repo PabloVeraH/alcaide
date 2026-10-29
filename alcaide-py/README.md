@@ -36,6 +36,8 @@ for m in decision.matched_rules:
     print(m.rule_id, m.category, m.severity, repr(text[start:end]))
 ```
 
+Once its verdicts look right on your traffic, enforce them: `Detector.with_default_rules(mode=Mode.Enforcement)`. To add your own rules to the default ones, load a file with `extends: default` (see the [main README](https://github.com/PabloVeraH/alcaide#custom-rules)).
+
 A `Detector` is immutable and thread-safe, and `evaluate` releases the GIL: build one at startup and share it.
 
 The default rule set is [`alcaide-core/rules/default.yaml`](https://github.com/PabloVeraH/alcaide/blob/main/alcaide-core/rules/default.yaml) — see [`BENCHMARKS.md`](https://github.com/PabloVeraH/alcaide/blob/main/BENCHMARKS.md) for its measured detection/false-positive rates.

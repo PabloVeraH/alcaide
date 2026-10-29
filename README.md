@@ -52,7 +52,7 @@ version: 1
 defaults:
   mode: enforcement       # or `shadow` to log without blocking
   block_threshold: high   # minimum severity that triggers Block
-  # max_input_bytes: 32000  # longer inputs: only this prefix is inspected...
+  # max_input_bytes: 1000000  # longer inputs: only this prefix is inspected...
   # on_oversize: block      # ...and this is their minimum verdict (or `flag`)
 
 rules:
@@ -62,6 +62,25 @@ rules:
     pattern_type: regex
     pattern: "ignore (all )?(previous |prior )?instructions"
 ```
+
+To keep the default rules and add your own, extend them instead of copying the file, so you keep getting their updates:
+
+```yaml
+version: 1
+extends: default
+disable: [jailbreak-stay-in-character]  # default rules to drop, by id
+defaults:
+  mode: enforcement
+  block_threshold: high
+rules:
+  - id: internal-codename
+    category: exfiltration
+    severity: high
+    pattern_type: literal
+    pattern: "project bluebird"
+```
+
+To change a default rule, disable it and redefine it under the same id. Disabling an id the default set doesn't have is an error, so a typo can't leave a rule running.
 
 Matching is case-insensitive and runs on normalized text, so rules don't need to handle capitalization, extra whitespace, invisible characters or homoglyphs themselves. Unknown fields are rejected, so a typo fails loudly instead of being ignored. The default rule set at [`alcaide-core/rules/default.yaml`](alcaide-core/rules/default.yaml) is a cited-source starting point, not a claim of completeness (see [`BENCHMARKS.md`](BENCHMARKS.md)).
 
@@ -82,9 +101,9 @@ alcaide bench --corpus corpus.yaml --min-detection 0.9 --max-false-positive 0.05
 ### Python
 
 ```python
-from alcaide import Detector, Verdict
+from alcaide import Detector, Mode, Verdict
 
-detector = Detector.with_default_rules()  # or from_config_path / from_yaml_str
+detector = Detector.with_default_rules(mode=Mode.Enforcement)  # or from_config_path / from_yaml_str
 decision = detector.evaluate("Ignore all previous instructions")
 for m in decision.matched_rules:
     start, end = m.span  # character offsets: text[start:end]

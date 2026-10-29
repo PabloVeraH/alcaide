@@ -36,8 +36,7 @@ fn bench_with_match(c: &mut Criterion) {
 
 fn bench_long_input(c: &mut Criterion) {
     let detector = Detector::with_default_rules();
-    // Worst realistic case: just under the default max_input_bytes, mixed
-    // prose with some non-ASCII, no match.
+    // A long prompt: mixed prose with some non-ASCII, no match.
     let paragraph = "Résumé of the quarterly meeting: the team reviewed the roadmap, \
                      discussed latency budgets and agreed on next steps. ";
     let text = paragraph.repeat(31_000 / paragraph.len());
