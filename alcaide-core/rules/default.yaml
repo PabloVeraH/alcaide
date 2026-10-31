@@ -7,8 +7,8 @@
 # This is a starting point, not a claim of completeness: it is deliberately
 # small and will be extended over time (see the project's contribution
 # model). It intentionally does NOT try to catch every known evasion
-# technique -- see the notes on typoglycemia/word-scrambling below for an
-# explicit, acknowledged gap.
+# technique -- see the note on what typo correction leaves uncaught at the
+# end of this file.
 #
 # Word boundaries are written (?-u:\b), the ASCII form: on non-ASCII text
 # a Unicode \b makes the regex engine fall back from its DFA to a much
@@ -153,7 +153,7 @@ rules:
     category: injection-generic
     severity: high
     pattern_type: regex
-    pattern: "(?-u:\\b)(ignore|disregard|forget|overwrite|override)\\s+(about\\s+)?((all|any|every)\\s+(of\\s+)?(the\\s+|your\\s+|those\\s+|these\\s+)?((previous|prior|preceding|earlier|above|past|old|original|initial|other|given|precedent|former)\\s+)?)(instructions?|prompts?|rules|directions?|directives?|orders|commands?|guidelines|programming|restrictions|tasks|assignments)(?-u:\\b)|(?-u:\\b)(ignore|disregard|forget|overwrite|override)\\s+(about\\s+)?(the\\s+)?(previous|prior|preceding|earlier|above|past|old|original|initial|other|given|precedent|former)\\s+(instructions?|prompts?|rules|directions?|directives?|orders|commands?|guidelines|programming|restrictions)(?-u:\\b)|(?-u:\\b)forget\\s+your\\s+(previous|prior|preceding|earlier|above|past|old|original|initial|other|given|precedent|former)\\s+(instructions?|prompts?|rules|directions?|directives?|orders|commands?|guidelines|programming|restrictions)(?-u:\\b)|(?-u:\\b)(ignore|disregard|overwrite|override)\\s+your\\s+((previous|prior|preceding|earlier|above|past|old|original|initial|other|given|precedent|former)\\s+)?(instructions?|prompts?|rules|directions?|directives?|orders|commands?|guidelines|programming|restrictions)(?-u:\\b)|(?-u:\\b)(ignore|forget|disregard)\\s+(about\\s+)?every\\s?thing\\s+(above|before\\s+(that|this)|(that\\s+)?you(['’]ve|\\s+have|\\s+had)?\\s+(been\\s+|were\\s+)?(told|instructed|programmed))|(?-u:\\b)(ignore|disregard|forget)\\s+(all\\s+)?(of\\s+)?the\\s+(instructions|rules|directions|orders)\\s+you(['’]ve|\\s+have)?\\s+(got|received|been\\s+given|were\\s+given)"
+    pattern: "(?-u:\\b)(ignore|disregard|forget|overwrite|override)\\s+(about\\s+)?((all|any|every)\\s+(of\\s+)?(the\\s+|your\\s+|those\\s+|these\\s+)?((previous|prior|preceding|earlier|above|past|old|original|initial|other|given|precedent|former)\\s+)?)(system\\s+)?(instructions?|prompts?|rules|directions?|directives?|orders|commands?|guidelines|programming|restrictions|tasks|assignments)(?-u:\\b)|(?-u:\\b)(ignore|disregard|forget|overwrite|override)\\s+(about\\s+)?(the\\s+)?(previous|prior|preceding|earlier|above|past|old|original|initial|other|given|precedent|former)\\s+(instructions?|prompts?|rules|directions?|directives?|orders|commands?|guidelines|programming|restrictions)(?-u:\\b)|(?-u:\\b)forget\\s+your\\s+(previous|prior|preceding|earlier|above|past|old|original|initial|other|given|precedent|former)\\s+(instructions?|prompts?|rules|directions?|directives?|orders|commands?|guidelines|programming|restrictions)(?-u:\\b)|(?-u:\\b)(ignore|disregard|overwrite|override)\\s+your\\s+((previous|prior|preceding|earlier|above|past|old|original|initial|other|given|precedent|former)\\s+)?(system\\s+)?(instructions?|prompts?|rules|directions?|directives?|orders|commands?|guidelines|programming|restrictions)(?-u:\\b)|(?-u:\\b)(ignore|forget|disregard)\\s+(about\\s+)?every\\s?thing\\s+(above|before\\s+(that|this)|(that\\s+)?you(['’]ve|\\s+have|\\s+had)?\\s+(been\\s+|were\\s+)?(told|instructed|programmed))|(?-u:\\b)(ignore|disregard|forget)\\s+(all\\s+)?(of\\s+)?the\\s+(instructions|rules|directions|orders)\\s+you(['’]ve|\\s+have)?\\s+(got|received|been\\s+given|were\\s+given)"
     enabled: true
     notes: >
       Literal documented example ("Ignore all previous instructions and
@@ -177,6 +177,10 @@ rules:
       forget your instructions" is ordinary advice. "tasks" and
       "assignments" only count with all/any/every: "ignore the previous
       tasks, priorities changed" is a user correcting a list.
+      An optional "system" before the noun ("ignore all previous system
+      instructions") is the OWASP cheat sheet's own typoglycemia payload,
+      spelled correctly: normalization corrects the typos, this matches
+      the result.
 
   - id: injection-ignore-instructions-es
     category: injection-generic
@@ -451,10 +455,12 @@ rules:
       Greek) never fire, nor do scripts joined by a hyphen
       ("Wi-Fi-роутер").
 
-# Known, acknowledged gap for this rule set: character
-# scrambling / typoglycemia evasion (e.g. "ignroe all prevoius systme
+# Typoglycemia / word scrambling (e.g. "ignroe all prevoius systme
 # instructions", documented in the same OWASP cheat sheet cited above) is
-# NOT caught by any rule here. Regex/literal matching cannot reasonably
-# catch arbitrary letter transpositions without a fuzzy-matching approach
-# out of scope for a deterministic engine -- this is a candidate for a
-# learned classifier, not a gap to paper over with a fragile regex.
+# handled by normalization, not by the rules: misspelled, scrambled and
+# leetspeak forms of the words these rules use are corrected in a
+# deobfuscated copy of the input. Known, acknowledged limits: a word the
+# rules don't use, or scrambled further than one edit with its first or
+# last letter moved, stays uncorrected; and a corrected sentence still has
+# to match a rule ("ignore the safety rules" doesn't: too common in
+# ordinary text to block).
