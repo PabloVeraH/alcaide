@@ -16,11 +16,16 @@ updates:
       actions:
         patterns: ["*"]
 
-  # The fuzz crate is outside the workspace and has its own lockfile.
+  # The fuzz crate is outside the workspace and has its own lockfile. Only
+  # its own dependencies: the workspace's are bumped by the entry above, and
+  # bumping them from here opened duplicate PRs without the code fixes.
   - package-ecosystem: cargo
     directory: /fuzz
     schedule:
       interval: weekly
+    allow:
+      - dependency-name: libfuzzer-sys
+      - dependency-name: arbitrary
     groups:
       fuzz:
         patterns: ["*"]
