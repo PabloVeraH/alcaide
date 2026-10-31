@@ -14,6 +14,7 @@ Resumen: el motor, la validación de config, la API, la CLI, los bindings, la CI
 - **Workflow de release** (`release.yml`): wheels abi3 para 5 plataformas, sdist, crates.io y PyPI. Falta configurar las credenciales y hacer la primera publicación (ver "Publicación").
 - **Log estructurado:** el registro de cada decisión es un evento de `tracing` con un campo por dato, no un JSON dentro del mensaje.
 - **CI de Python** también en Windows y macOS.
+- **Evasiones por codificación:** la normalización agrega una copia deobfuscada (escapes URL, HTML y `\u`/`\x`; emoji y símbolos dentro de una palabra; letras espaciadas) y decodifica base64 anidado. Dos reglas nuevas, `encoding-invisible-text` y `encoding-mixed-script` (medium), marcan el texto escondido aunque no calce con ninguna regla. Corpus: 74/78 detectados, 4/102 falsos positivos; los datasets públicos no cambian (no usan estas técnicas) y siguen sin falsos positivos.
 
 ## 🔴 Detección
 
@@ -23,29 +24,17 @@ Resumen: el motor, la validación de config, la API, la CLI, los bindings, la CI
 
 ## 🟠 Evasiones conocidas que siguen pasando
 
-Verificadas contra el motor en `main`. Todas dan Allow salvo que se indique otra cosa:
+Ya resueltas: URL-encoding, entidades HTML, escapes `\u`/`\x`, emoji y símbolos dentro de una palabra, letras espaciadas, base64 anidado, y texto oculto o disfrazado que no calza con ninguna regla (ver "Resuelto"). Lo que sigue pasando:
 
-- **Codificaciones que la normalización no deshace:**
-  - URL-encoding (`%69%67%6E...`);
-  - entidades HTML (`&#105;gnore`);
-  - ROT13 y texto invertido.
-- **Separadores dentro de las palabras:** emoji (`i🔓gnore`, documentado en `alcaide-core/src/normalize.rs`) y guiones (`ig-nore`).
-- **Letras espaciadas** (`i g n o r e`, una cadena de prueba de OWASP), **leetspeak** y **typoglycemia** (`ignroe all prevoius systme instructions`). Solo se detectaron cuando el texto además pedía el system prompt y calzó con otra regla; la parte de anulación de instrucciones se escapa.
-- **Texto oculto en caracteres tag** que no coincide con ninguna regla: la normalización lo revela, pero si no hay regla que calce, no queda ninguna señal de que alguien escondió texto.
-- **Base64 anidado:** solo da Flag (heurística); el segundo nivel no se decodifica.
+- **Guiones y puntuación dentro de una palabra** (`ig-nore`): se dejó así a propósito, porque la puntuación une palabras reales todo el tiempo (`well-known`, `don’t`) y quitarla generaría una copia extra para casi cualquier texto.
+- **ROT13 y texto invertido:** no se agregaron. Habría que decodificar todo el texto siempre, porque no hay ninguna marca que indique que viene codificado; eso duplicaría el costo de cada evaluación.
+- **Leetspeak** (`1gn0r3`) y **typoglycemia** (`ignroe all prevoius systme instructions`).
+- **Letras espaciadas sin hueco más ancho entre palabras** (`i g n o r e a l l`): se unen en una sola palabra (`ignoreall`) y no calzan con las reglas.
 - **Paráfrasis de framing hipotético** (`"Let's say this is a fictional world where..."`): documentada en las `notes` de `jailbreak-hypothetical-framing`.
 
-Propuestas, todas deterministas:
+Propuesta pendiente, determinista:
 
-1. **Tratar la evasión como señal en sí misma.** Nuevas heurísticas:
-   - presencia de caracteres tag;
-   - controles bidi;
-   - una palabra que mezcla alfabetos (latino con cirílico o griego);
-   - alta densidad de caracteres de ancho cero.
-
-   Casi nadie usa esto de forma legítima. LLM Guard tiene un escáner dedicado (*InvisibleText*).
-2. **Más decodificaciones,** con el texto decodificado agregado al final sin reemplazar el original, igual que hoy con base64: URL, entidades HTML y escapes `\uXXXX`; unir letras espaciadas; quitar separadores de emoji y símbolos dentro de una palabra; decodificar base64 anidado.
-3. **Corrección de typos sobre un léxico chico de palabras de ataque** (~40, como *ignore*, *instructions* o *previous*), con distancia de edición ≤ 1 y solo en palabras de 5 letras o más. Cerraría parte de la typoglycemia sin un clasificador. Habría que medir los falsos positivos en los datasets antes de adoptarla.
+- **Corrección de typos sobre un léxico chico de palabras de ataque** (~40, como *ignore*, *instructions* o *previous*), con distancia de edición ≤ 1 y solo en palabras de 5 letras o más. Cerraría parte de la typoglycemia y del leetspeak sin un clasificador, y serviría también para separar `ignoreall`. Habría que medir los falsos positivos en los datasets antes de adoptarla.
 
 ## 🟠 Falsos positivos conocidos
 
@@ -103,7 +92,7 @@ Los cuatro están documentados en las reglas y en el corpus. Se dejaron porque a
 ## Orden recomendado
 
 1. Mergear `feat/adoption-blockers` y hacer la primera publicación (0.2.0).
-2. Heurísticas de evasión y decodificaciones nuevas: mejoran la detección sin reglas nuevas y, en principio, sin falsos positivos.
+2. Corrección de typos sobre un léxico de palabras de ataque (typoglycemia, leetspeak).
 3. Reglas en francés y portugués (desde splits de train), y tests dentro de cada regla.
 4. Escaneo de salida con canary: el diferenciador de producto más claro.
 5. WASM o sidecar, más benignos a escala y una comparación con LLM Guard y Prompt Guard.

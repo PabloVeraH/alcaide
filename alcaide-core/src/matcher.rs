@@ -16,7 +16,7 @@
 #![allow(missing_docs)]
 
 use crate::config::{PatternType, Rule, RuleSet};
-use crate::normalize::{fold_text, NormalizedInput};
+use crate::normalize::{fold_text, Encoding, NormalizedInput};
 use aho_corasick::AhoCorasick;
 use regex::{Regex, RegexBuilder};
 
@@ -51,26 +51,39 @@ pub enum MatcherError {
 }
 
 /// Which built-in heuristic a `pattern_type: heuristic` rule refers to.
-/// The only documented name today is `base64_suspicious`, which covers
-/// both the base64 and hex decode heuristics -- from a rule author's
-/// perspective both mean the same thing: normalization found and decoded
-/// an encoded blob of readable text.
+/// Each fires on something normalization noticed:
+///
+/// - `base64_suspicious`: a base64 or hex blob decoded to readable text;
+/// - `invisible_text`: an invisible character inside a word, a bidi
+///   control, or tag characters outside an emoji flag;
+/// - `mixed_script`: a word mixing Latin letters with Cyrillic, Greek or
+///   Armenian look-alikes.
 #[derive(Debug)]
 enum Heuristic {
     Base64Suspicious,
+    InvisibleText,
+    MixedScript,
 }
 
 impl Heuristic {
     fn from_name(name: &str) -> Option<Self> {
         match name {
             "base64_suspicious" => Some(Self::Base64Suspicious),
+            "invisible_text" => Some(Self::InvisibleText),
+            "mixed_script" => Some(Self::MixedScript),
             _ => None,
         }
     }
 
     fn first_match(&self, normalized: &NormalizedInput) -> Option<(usize, usize)> {
         match self {
-            Self::Base64Suspicious => normalized.decoded.first().map(|blob| blob.span),
+            Self::Base64Suspicious => normalized
+                .decoded
+                .iter()
+                .find(|blob| matches!(blob.encoding, Encoding::Base64 | Encoding::Hex))
+                .map(|blob| blob.span),
+            Self::InvisibleText => normalized.invisible_at.map(|at| normalized.word_at(at)),
+            Self::MixedScript => normalized.mixed_script_at.map(|at| normalized.word_at(at)),
         }
     }
 }
