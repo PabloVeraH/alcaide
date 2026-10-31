@@ -152,10 +152,12 @@ Steady-state numbers: `alcaide bench` runs the corpus once to warm up (lazily bu
 |---|---|
 | Short prompt, no match (every rule scans the full text) | **~3.1µs** |
 | Short prompt with a match | **~1.7µs** |
-| ~30KB of prose, no match (just under the default `max_input_bytes`) | **~240µs** |
+| ~30KB of prose, no match | **~240µs** |
 | The same payload repeated 900 times | **~315µs** |
 
 These numbers are against the actual 14 curated rules (mixing literal, regex, and heuristic pattern types), running the complete pipeline (`Detector::evaluate`: size check, normalization, matching, scoring, mode resolution) — not the matcher in isolation. Widening several regexes to close the gaps above cost no measurable latency.
+
+Whole documents cost time linear in their size. A 1 MB input (the default `max_input_bytes`) takes **20-43 ms** through `alcaide check` (release build, in Docker, best of five): about 20 ms for plain prose, base64 or text hidden in tag characters, up to about 43 ms for dense combining accents, mixed scripts or emoji, which normalization works hardest on.
 
 Without a `tracing` subscriber the per-request log record isn't built at all; with one, add the cost of hashing the input (SHA-256) and serializing the record, plus whatever the subscriber does with it.
 

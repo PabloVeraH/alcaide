@@ -93,8 +93,9 @@ class Detector:
     def from_yaml_str(yaml: str) -> Detector:
         """Loads a rule set from YAML text. Raises ValueError if invalid."""
     @staticmethod
-    def with_default_rules() -> Detector:
-        """The bundled curated rule set, as shipped (shadow mode)."""
+    def with_default_rules(mode: Optional[Mode] = None) -> Detector:
+        """The bundled curated rule set. It ships in shadow mode; pass
+        ``mode=Mode.Enforcement`` to block."""
     def rule_count(self) -> int:
         """Total number of rules in the loaded rule set, enabled or not."""
     def evaluate(self, input: str, request_id: Optional[str] = None) -> Decision:

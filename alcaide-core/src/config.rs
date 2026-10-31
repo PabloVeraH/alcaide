@@ -25,10 +25,16 @@ pub struct RuleSet {
 impl RuleSet {
     /// Parses and semantically validates a `RuleSet` from a YAML string.
     ///
+    /// A file with `extends: default` starts from the curated default rules
+    /// ([`DEFAULT_RULES_YAML`](crate::DEFAULT_RULES_YAML)), drops the ids
+    /// listed under `disable`, and adds its own `rules`; its `defaults`
+    /// apply as written. The result holds the combined rules.
+    ///
     /// This checks the file itself; patterns are compiled (and checked
     /// further) when a [`Detector`](crate::Detector) is built from it.
     pub fn from_yaml_str(yaml: &str) -> Result<Self, crate::ConfigError> {
-        let parsed: RuleSet = serde_saphyr::from_str(yaml)?;
+        let file: RuleFile = serde_saphyr::from_str(yaml)?;
+        let parsed = file.resolve()?;
         parsed.validate()?;
         Ok(parsed)
     }
@@ -69,6 +75,58 @@ impl RuleSet {
     }
 }
 
+/// A rule file as written: a [`RuleSet`] that may build on another rule
+/// set instead of copying it, so it keeps receiving that set's updates.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RuleFile {
+    version: u32,
+    #[serde(default)]
+    extends: Option<BaseRuleSet>,
+    #[serde(default)]
+    disable: Vec<String>,
+    defaults: Defaults,
+    #[serde(default)]
+    rules: Vec<Rule>,
+}
+
+/// A rule set a file can `extends`.
+#[derive(Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum BaseRuleSet {
+    /// The curated default rule set.
+    Default,
+}
+
+impl RuleFile {
+    fn resolve(self) -> Result<RuleSet, crate::ConfigError> {
+        use crate::ConfigError;
+
+        let mut rules = match self.extends {
+            None if !self.disable.is_empty() => return Err(ConfigError::DisableWithoutExtends),
+            None => Vec::new(),
+            Some(BaseRuleSet::Default) => {
+                let mut base = RuleSet::from_yaml_str(crate::DEFAULT_RULES_YAML)?.rules;
+                for id in &self.disable {
+                    let before = base.len();
+                    base.retain(|rule| &rule.id != id);
+                    if base.len() == before {
+                        return Err(ConfigError::UnknownDisabledRule(id.clone()));
+                    }
+                }
+                base
+            }
+        };
+        rules.extend(self.rules);
+
+        Ok(RuleSet {
+            version: self.version,
+            defaults: self.defaults,
+            rules,
+        })
+    }
+}
+
 /// Global settings for a [`RuleSet`]: mode, blocking threshold, and error
 /// behavior.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -91,7 +149,8 @@ pub struct Defaults {
     pub log_raw_input: bool,
     /// Inputs longer than this many bytes are only inspected up to this
     /// length (bounding worst-case evaluation cost), and `on_oversize`
-    /// decides the minimum verdict for them. Defaults to 32,000.
+    /// decides the minimum verdict for them. Defaults to 1,000,000 (1 MB),
+    /// which takes tens of milliseconds to inspect: a whole document fits.
     #[serde(default = "default_max_input_bytes")]
     pub max_input_bytes: usize,
     /// Minimum verdict for an input longer than `max_input_bytes`, whose
@@ -116,7 +175,7 @@ impl Default for Defaults {
 }
 
 fn default_max_input_bytes() -> usize {
-    32_000
+    1_000_000
 }
 
 /// What to do with an input longer than `Defaults::max_input_bytes`.
@@ -458,9 +517,108 @@ rules:
         ))
         .expect("valid");
 
-        assert_eq!(defaulted.defaults.max_input_bytes, 32_000);
+        assert_eq!(defaulted.defaults.max_input_bytes, 1_000_000);
         assert_eq!(defaulted.defaults.on_oversize, OnOversize::Block);
         assert_eq!(explicit.defaults.max_input_bytes, 1000);
         assert_eq!(explicit.defaults.on_oversize, OnOversize::Flag);
+    }
+
+    // --- extends / disable ---
+
+    fn default_rule_ids() -> Vec<String> {
+        RuleSet::from_yaml_str(crate::DEFAULT_RULES_YAML)
+            .expect("valid default rules")
+            .rules
+            .into_iter()
+            .map(|rule| rule.id)
+            .collect()
+    }
+
+    /// `yaml_with`'s single rule on top of the default rules.
+    fn extending(extra: &str) -> String {
+        yaml_with("", LITERAL_BODY).replacen(
+            "version: 1\n",
+            &format!("version: 1\nextends: default\n{extra}"),
+            1,
+        )
+    }
+
+    #[test]
+    fn extends_default_adds_own_rules_and_settings_to_the_default_rules() {
+        let yaml = extending("").replacen("mode: shadow", "mode: enforcement", 1);
+
+        let parsed = RuleSet::from_yaml_str(&yaml).expect("valid");
+
+        let mut expected = default_rule_ids();
+        expected.push("rule-1".to_string());
+        let ids: Vec<_> = parsed.rules.iter().map(|rule| rule.id.clone()).collect();
+        assert_eq!(ids, expected);
+        assert_eq!(parsed.defaults.mode, crate::decision::Mode::Enforcement);
+    }
+
+    #[test]
+    fn disable_drops_default_rules_and_frees_their_id() {
+        let dropped = &default_rule_ids()[0];
+        // Redefining a disabled rule under its own id is how one is changed.
+        let yaml = extending(&format!("disable: [{dropped}]\n")).replacen(
+            "id: rule-1",
+            &format!("id: {dropped}"),
+            1,
+        );
+
+        let parsed = RuleSet::from_yaml_str(&yaml).expect("valid");
+
+        assert_eq!(parsed.rules.len(), default_rule_ids().len());
+        let redefined: Vec<_> = parsed.rules.iter().filter(|r| &r.id == dropped).collect();
+        assert_eq!(redefined.len(), 1);
+        assert_eq!(redefined[0].pattern, "foo");
+    }
+
+    #[test]
+    fn disabling_an_unknown_rule_is_an_error() {
+        // A typo must not leave the rule it meant to disable running.
+        let yaml = extending("disable: [no-such-rule]\n");
+
+        let result = RuleSet::from_yaml_str(&yaml);
+
+        assert!(
+            matches!(&result, Err(crate::ConfigError::UnknownDisabledRule(id)) if id == "no-such-rule"),
+            "{result:?}"
+        );
+    }
+
+    #[test]
+    fn disable_without_extends_is_an_error() {
+        let yaml = yaml_with("", LITERAL_BODY).replacen(
+            "version: 1\n",
+            "version: 1\ndisable: [rule-1]\n",
+            1,
+        );
+
+        let result = RuleSet::from_yaml_str(&yaml);
+
+        assert!(matches!(
+            result,
+            Err(crate::ConfigError::DisableWithoutExtends)
+        ));
+    }
+
+    #[test]
+    fn extends_only_accepts_a_known_rule_set() {
+        let yaml = extending("").replacen("extends: default", "extends: ./other.yaml", 1);
+
+        assert!(matches!(
+            RuleSet::from_yaml_str(&yaml),
+            Err(crate::ConfigError::Parse(_))
+        ));
+    }
+
+    #[test]
+    fn an_extending_file_needs_no_rules_of_its_own() {
+        let yaml = "version: 1\nextends: default\ndefaults:\n  mode: enforcement\n  block_threshold: high\n";
+
+        let parsed = RuleSet::from_yaml_str(yaml).expect("valid");
+
+        assert_eq!(parsed.rules.len(), default_rule_ids().len());
     }
 }
