@@ -72,15 +72,14 @@ Los cuatro están documentados en las reglas y en el corpus. Se dejaron porque a
 
 ## 🟡 Publicación y release
 
-- **Primera publicación: 0.2.0.** El token de crates.io y el trusted publisher de PyPI ya están configurados, y la versión, el CHANGELOG y los READMEs están listos. Falta pushear el tag `v0.2.0` (el tag `v0.1.0` ya existía y apunta al hito de la fase 1).
-- Después de publicar: agregar `cargo-semver-checks` a la CI contra la versión publicada.
+- **Publicado 0.2.0** en crates.io (`alcaide-core`, `alcaide-cli`) y PyPI (`alcaide`, wheels para Linux, macOS y Windows). Para la próxima versión: subir la versión del workspace, cerrar `[Unreleased]` en el CHANGELOG y pushear el tag `vX.Y.Z`.
+- **`cargo-semver-checks` en la CI:** compara la API pública de `alcaide-core` con la última versión en crates.io; un cambio incompatible falla hasta subir la versión a la siguiente minor.
 - **Licencia:** todos los competidores revisados son MIT o Apache. Para una librería que va embebida en una aplicación, AGPL frena la adopción. Es una decisión de negocio; queda anotada solo como factor competitivo.
 
 ## ⚪ Ingeniería menor
 
 - **CI:**
-  - no hay medición de cobertura;
-  - `cargo-semver-checks` necesita una versión publicada para comparar: agregarlo después de la primera publicación, antes de la 1.0.
+  - no hay medición de cobertura.
 - **`RegexSet` como prefiltro:** conviene cuando haya cientos de reglas; con 24 no se justifica.
 
 ---

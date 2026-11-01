@@ -22,6 +22,8 @@ pytest tests/
 
 Changes to normalization, matching or rule loading should also survive a few minutes of fuzzing (nightly, Linux/macOS): see [fuzz/README.md](fuzz/README.md).
 
+CI compares `alcaide-core`'s public API with its latest release on crates.io ([cargo-semver-checks](https://github.com/obi1kenobi/cargo-semver-checks)). A breaking change, such as removing or renaming a public item, fails the check until the same pull request bumps the workspace version to the next minor (0.2.x to 0.3.0) and notes it in the CHANGELOG.
+
 Every behavior change comes with a test that fails without it. For an evasion or a false positive, that means a regression test next to the code, and an entry in the labeled corpus below.
 
 ## Contributing rules

@@ -63,6 +63,18 @@ jobs:
       - name: Test on the declared rust-version
         run: cargo test --workspace --locked
 
+  semver:
+    name: Semver (against the latest release)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Compares alcaide-core's public API with its latest version on
+      # crates.io: a breaking change fails unless the version is bumped
+      # (0.2.x -> 0.3.0). alcaide-cli has no library API to check.
+      - uses: obi1kenobi/cargo-semver-checks-action@6b69fcf40e9b5fb17adeb57e4b6ecd020649a239 # v2.9
+        with:
+          package: alcaide-core
+
   deny:
     name: Dependencies (advisories, licenses, sources)
     runs-on: ubuntu-latest
