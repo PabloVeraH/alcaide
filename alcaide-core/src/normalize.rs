@@ -292,7 +292,10 @@ fn fold(input: &str, mut tracking: Option<(&mut OffsetMap, &mut Findings)>) -> S
 
         if let Some((offsets, _)) = tracking.as_mut() {
             if out[out_start..] != *original {
-                offsets.record(out_start..out.len(), unit.clone());
+                // A space keeps its own segment: the deobfuscated copy reads
+                // how wide each gap between spaced-out letters was.
+                let space = out[out_start..] == *" " || out[..out_start].ends_with(' ');
+                offsets.record(out_start..out.len(), unit.clone(), !space);
             }
         }
         start = unit.end;
@@ -764,7 +767,12 @@ fn spaced_letters<'a>(
                     let gap = input
                         .get(offsets.start(at)..offsets.start(at + 1))
                         .unwrap_or(" ");
-                    let wide = gap.chars().filter(|c| c.is_whitespace()).count() > 1;
+                    let wide = gap
+                        .chars()
+                        .map(|c| reveal_tag(c).unwrap_or(c))
+                        .filter(|c| c.is_whitespace())
+                        .count()
+                        > 1;
                     (c == ' ' && (!spaced_by_spaces || wide)).then_some(' ')
                 })
                 .collect();
@@ -1122,13 +1130,15 @@ struct Segment {
 }
 
 impl OffsetMap {
-    /// Records a changed unit, merging it with the previous one when both
-    /// sides are contiguous (keeps the map small for e.g. an all-Cyrillic
-    /// word). Dropped units (empty in normalized text) are never merged,
-    /// so spans can exclude the invisible characters around a match.
-    fn record(&mut self, normalized: Range<usize>, original: Range<usize>) {
+    /// Records a changed unit, merging it with the previous one when
+    /// `mergeable` and both sides are contiguous (keeps the map small for
+    /// e.g. an all-Cyrillic word). Dropped units (empty in normalized text)
+    /// are never merged, so spans can exclude the invisible characters
+    /// around a match.
+    fn record(&mut self, normalized: Range<usize>, original: Range<usize>, mergeable: bool) {
         if let Some(last) = self.segments.last_mut() {
-            if !last.normalized.is_empty()
+            if mergeable
+                && !last.normalized.is_empty()
                 && !normalized.is_empty()
                 && last.normalized.end == normalized.start
                 && last.original.end == original.start
@@ -1636,6 +1646,11 @@ mod tests {
             ),
             // A wider gap between words survives as a space.
             ("i g n o r e   a l l", "ignore all"),
+            // Regression (fuzzing): also when the spaces are tag characters.
+            ("i g n o r e\u{E0020}\u{E0020}a l l", "ignore all"),
+            // Changed spaces next to changed letters: each gap is read on
+            // its own.
+            ("x  u u\nս\u{E0020}e", "x uuue"),
             ("i.g.n.o.r.e a.l.l rules", "ignore all rules"),
             ("now: i-g-n-o-r-e", "now: ignore"),
         ] {
