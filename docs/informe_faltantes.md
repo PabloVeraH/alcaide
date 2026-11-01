@@ -72,11 +72,8 @@ Los cuatro están documentados en las reglas y en el corpus. Se dejaron porque a
 
 ## 🟡 Publicación y release
 
-- **No está publicado** en crates.io ni PyPI. Los nombres `alcaide-core`, `alcaide-cli` y `alcaide` estaban libres al revisar.
-- Antes de publicar falta:
-  1. **crates.io:** un token con los scopes publish-new y publish-update, guardado como secret `CARGO_REGISTRY_TOKEN`.
-  2. **PyPI:** registrar un *pending trusted publisher* para el repo, el workflow `release.yml` y el environment `pypi`.
-  3. **Versión:** el tag `v0.1.0` ya existe y apunta al hito de la fase 1, así que la primera publicación debería ser 0.2.0 (subir la versión del workspace, cerrar `[Unreleased]` en el CHANGELOG y pushear `v0.2.0`).
+- **Primera publicación: 0.2.0.** El token de crates.io y el trusted publisher de PyPI ya están configurados, y la versión, el CHANGELOG y los READMEs están listos. Falta pushear el tag `v0.2.0` (el tag `v0.1.0` ya existía y apunta al hito de la fase 1).
+- Después de publicar: agregar `cargo-semver-checks` a la CI contra la versión publicada.
 - **Licencia:** todos los competidores revisados son MIT o Apache. Para una librería que va embebida en una aplicación, AGPL frena la adopción. Es una decisión de negocio; queda anotada solo como factor competitivo.
 
 ## ⚪ Ingeniería menor

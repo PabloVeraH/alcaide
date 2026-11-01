@@ -4,13 +4,11 @@ Python bindings for [Alcaide](https://github.com/PabloVeraH/alcaide) — a deter
 
 ## Install
 
-Not on PyPI yet — build from the repository (needs a Rust toolchain, 1.89+):
-
 ```sh
-pip install ./alcaide-py
+pip install alcaide
 ```
 
-One wheel (abi3) works on every CPython ≥ 3.9. Type stubs are included.
+Prebuilt wheels cover Linux (x86_64, aarch64), macOS (x86_64, arm64) and Windows (x64); each works on every CPython ≥ 3.9 (abi3). Other platforms build from the source distribution, which needs a Rust toolchain (1.89+). Type stubs are included.
 
 ## Usage
 

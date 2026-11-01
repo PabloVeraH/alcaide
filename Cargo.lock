@@ -13,7 +13,7 @@ dependencies = [
 
 [[package]]
 name = "alcaide-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "alcaide-core",
  "clap",
@@ -25,7 +25,7 @@ dependencies = [
 
 [[package]]
 name = "alcaide-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "aho-corasick",
  "base64",
@@ -46,7 +46,7 @@ dependencies = [
 
 [[package]]
 name = "alcaide-py"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "alcaide-core",
  "pyo3",

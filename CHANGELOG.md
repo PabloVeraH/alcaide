@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-01
+
+First release published to crates.io and PyPI.
+
 ### Security
 
 - An input longer than `max_input_bytes` was flagged without being inspected, so padding any payload past the limit downgraded a `Block` to a `Flag`. Its prefix is now always inspected, and the new `on_oversize` setting (default `block`) sets the minimum verdict.
@@ -43,25 +47,26 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Changed
 
 - The decision log record is one `tracing` event with a field per entry (message `prompt evaluated`) instead of a JSON string inside the message, which a JSON subscriber encoded twice. `matched_rules` stays JSON text, since a list can't be a `tracing` field, and `input_snippet` is omitted rather than null when not logged.
-- `max_input_bytes` defaults to 1,000,000 instead of 32,000. A retrieved document longer than 32 KB was blocked unread by default, and with `on_oversize: flag` a payload appended to it went undetected; a whole 1 MB document is now inspected in 20-43 ms.
+- `max_input_bytes` defaults to 1,000,000 instead of 32,000. A retrieved document longer than 32 KB was blocked unread by default, and with `on_oversize: flag` a payload appended to it went undetected; a whole 1 MB document is now inspected in 20-80 ms.
 - Default rules write word boundaries as ASCII `(?-u:\b)`: a Unicode `\b` made the regex engine leave its DFA on non-ASCII text, 10x slower at p99 on long prompts.
 - `MatchDetail::span` is now a byte range of the caller's original input. It used to point into internal normalized text. In Python, `MatchDetail.span` is in characters, so `text[start:end]` works.
 - `Decision`, `MatchDetail` and `ConfigError` are `#[non_exhaustive]`.
 - CLI: `bench` takes the rule set as `--rules` (optional) instead of a positional argument; `--corpus` is unchanged. It now warms up before measuring, so its latency percentiles reflect steady state.
 - Each rule is reported at most once per evaluation, at its first occurrence: a payload repeated many times no longer inflates `matched_rules` and every log record.
 - The log record no longer has a `timestamp` field (the `tracing` subscriber stamps each event), which drops the `chrono` dependency.
-
-### Performance
-
-- 43–60% faster end to end (criterion, against 0.1.0 plus the security fixes above): the per-request log record is only built when a subscriber listens; non-whitespace ASCII runs skip per-character normalization; regex rules stop at their first match; matches refer to rules by index.
 - `Rule::pattern` is required for every pattern type, heuristics included.
 - `Verdict` is ordered by strictness: `Allow < Flag < Block`.
 - Default rules `jailbreak-dan-persona` and `exfiltration-repeat-above` were narrowed to stop blocking "I can't do anything now" and "repeat everything above as bullets".
 - Minimum supported Rust version is 1.89. `serde_yaml` (unmaintained) was replaced by `serde-saphyr`.
 
+### Performance
+
+- 43–60% faster end to end (criterion, against 0.1.0 plus the security fixes above): the per-request log record is only built when a subscriber listens; non-whitespace ASCII runs skip per-character normalization; regex rules stop at their first match; matches refer to rules by index.
+
 ## [0.1.0] - 2026-09-02
 
 Initial release: rule engine (literal, regex and heuristic rules), normalization, shadow and enforcement modes, structured logging, curated default rule set, CLI and Python bindings.
 
-[Unreleased]: https://github.com/PabloVeraH/alcaide/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/PabloVeraH/alcaide/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/PabloVeraH/alcaide/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/PabloVeraH/alcaide/releases/tag/v0.1.0
