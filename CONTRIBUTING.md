@@ -34,7 +34,7 @@ Rules live in [`alcaide-core/rules/default.yaml`](alcaide-core/rules/default.yam
 
 Write word boundaries as `(?-u:\b)`, not `\b`: a Unicode word boundary makes the regex engine fall back to a much slower path on non-ASCII text.
 
-Matching is case-insensitive and runs on normalized text (whitespace collapsed, invisible characters removed, look-alike letters folded to Latin), plus decoded base64/hex and a deobfuscated copy (escapes decoded, emoji inside words removed, spaced-out letters joined), so a rule doesn't need to handle those variations itself. `alcaide lint-rules <file>` validates a rule file without evaluating anything.
+Matching is case-insensitive and runs on normalized text (whitespace collapsed, invisible characters removed, look-alike letters folded to Latin), plus decoded base64/hex and a deobfuscated copy (escapes decoded, emoji inside words removed, spaced-out letters joined, typos of attack words corrected), so a rule doesn't need to handle those variations itself. Typo correction only knows the words in `ATTACK_WORDS` (`alcaide-core/src/normalize.rs`): a rule built on a new word should add it there, with its inflections. `alcaide lint-rules <file>` validates a rule file without evaluating anything.
 
 After changing rules or the corpus, re-run `alcaide bench` and update [BENCHMARKS.md](BENCHMARKS.md) with the new numbers, including the public datasets (`python benchmarks/fetch_public.py`). Their train splits may inform a rule; never read their test splits while writing one, or the held-out numbers stop meaning anything.
 
