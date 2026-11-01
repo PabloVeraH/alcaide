@@ -4,15 +4,14 @@ A deterministic, auditable prompt-injection firewall written in Rust — inspect
 
 ## Status
 
-Pre-1.0, but functionally complete for the core use case: config loading, normalization (Unicode NFKC, invisible-character removal, homoglyph folding, whitespace collapsing, base64/hex decoding, a deobfuscated copy that undoes escapes, emoji inside words and spaced-out letters), pattern matching (literal + regex + heuristic rules), scoring, shadow/enforcement modes, structured JSON logging, a curated default rule set with cited sources, a CLI (`alcaide check` / `lint-rules` / `bench`), and Python bindings (`pip install .` in `alcaide-py/`) all work end to end. Not yet published to crates.io or PyPI. See [`BENCHMARKS.md`](BENCHMARKS.md) for real, measured detection/false-positive rates and latency against the curated rule set.
+Pre-1.0, but functionally complete for the core use case: config loading, normalization (Unicode NFKC, invisible-character removal, homoglyph folding, whitespace collapsing, base64/hex decoding, a deobfuscated copy that undoes escapes, emoji inside words and spaced-out letters), pattern matching (literal + regex + heuristic rules), scoring, shadow/enforcement modes, structured JSON logging, a curated default rule set with cited sources, a CLI (`alcaide check` / `lint-rules` / `bench`), and Python bindings (`pip install alcaide`) all work end to end. See [`BENCHMARKS.md`](BENCHMARKS.md) for real, measured detection/false-positive rates and latency against the curated rule set.
 
 ## Usage
 
-Not published to crates.io yet — depend on the git repo directly (Rust 1.89+):
+Add [`alcaide-core`](https://crates.io/crates/alcaide-core) to your project (Rust 1.89+):
 
-```toml
-[dependencies]
-alcaide-core = { git = "https://github.com/PabloVeraH/alcaide" }
+```sh
+cargo add alcaide-core
 ```
 
 The curated default rule set is embedded in the crate. It ships in shadow mode (it reports what it would block, but never blocks); switch to enforcement once you've checked it against your own traffic:
@@ -87,7 +86,7 @@ Matching is case-insensitive and runs on normalized text, so rules don't need to
 ### Command line
 
 ```sh
-cargo install --git https://github.com/PabloVeraH/alcaide alcaide-cli
+cargo install alcaide-cli
 
 alcaide check "Ignore all previous instructions"   # built-in rules
 echo "some text" | alcaide check --rules rules.yaml --json
